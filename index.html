@@ -1,492 +1,269 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sistem Scanare Activități — OVS</title>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <style>
-    :root{
-      --primary:#1a237e;--primary-light:#3949ab;--danger:#e53935;
-      --bg:#f0f2f8;--card:#fff;--text:#1a1a2e;--muted:#6b7280;
-      --border:#e0e0e0;--shadow:0 4px 20px rgba(26,35,126,.10);
-    }
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-
-    /* LOADING OVERLAY */
-    #loadingOverlay{
-      position:fixed;inset:0;background:linear-gradient(135deg,#1a237e,#3949ab);
-      z-index:9999;display:flex;align-items:center;justify-content:center;
-      flex-direction:column;gap:20px;color:#fff;
-    }
-    #loadingOverlay.hidden{display:none;}
-    .loader-icon{font-size:3rem;animation:spin 1.5s linear infinite;}
-    @keyframes spin{to{transform:rotate(360deg);}}
-    .loader-text{font-size:1.2rem;font-weight:600;}
-    .loader-sub{font-size:.85rem;opacity:.7;}
-
-    /* CONNECTION STATUS */
-    .conn-badge{
-      font-size:.75rem;font-weight:700;padding:4px 12px;border-radius:20px;
-      display:flex;align-items:center;gap:6px;transition:all .3s;
-    }
-    .conn-badge.online{background:rgba(76,175,80,.25);color:#a5d6a7;}
-    .conn-badge.offline{background:rgba(244,67,54,.25);color:#ef9a9a;}
-    .conn-dot{width:8px;height:8px;border-radius:50%;}
-    .conn-badge.online .conn-dot{background:#4caf50;box-shadow:0 0 6px #4caf50;}
-    .conn-badge.offline .conn-dot{background:#f44336;}
-
-    header{
-      background:linear-gradient(135deg,var(--primary),var(--primary-light));
-      color:#fff;padding:12px 20px;
-      display:flex;align-items:center;justify-content:space-between;gap:12px;
-      box-shadow:0 2px 12px rgba(26,35,126,.25);position:sticky;top:0;z-index:200;
-    }
-    .logo{display:flex;align-items:center;gap:10px;}
-    .logo svg{width:30px;height:30px;}
-    header h1{font-size:1.05rem;font-weight:700;}
-    .header-right{display:flex;align-items:center;gap:10px;}
-    .clock{font-size:.9rem;font-weight:600;background:rgba(255,255,255,.15);
-      padding:5px 12px;border-radius:20px;letter-spacing:1px;}
-
-    .tabs{max-width:1400px;margin:14px auto 0;padding:0 14px;display:flex;gap:5px;flex-wrap:wrap;}
-    .tab-btn{padding:8px 18px;border:none;border-radius:10px 10px 0 0;font-size:.88rem;
-      font-weight:600;cursor:pointer;background:#dde1f0;color:var(--primary);transition:all .2s;}
-    .tab-btn.active{background:var(--card);box-shadow:0 -2px 8px rgba(26,35,126,.1);}
-    .tab-btn:hover:not(.active){background:#cdd1e8;}
-    .tab-content{display:none;}
-    .tab-content.active{display:block;}
-    .main-wrap{max-width:1400px;margin:0 auto;padding:14px;}
-
-    /* SCAN CARD */
-    .scan-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:16px;}
-    .panel-title{font-size:.78rem;font-weight:700;color:var(--primary);
-      text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;}
-    .scan-row{display:flex;gap:10px;}
-    .scan-input{flex:1;padding:12px 15px;font-size:1rem;border:2px solid var(--border);
-      border-radius:10px;outline:none;transition:border .2s;}
-    .scan-input:focus{border-color:var(--primary-light);}
-    .scan-btn{padding:12px 22px;font-size:.92rem;font-weight:700;background:var(--primary);color:#fff;
-      border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .1s;
-      display:flex;align-items:center;gap:7px;white-space:nowrap;}
-    .scan-btn:hover{background:var(--primary-light);}
-    .scan-btn:active{transform:scale(.97);}
-    .activity-select{width:100%;margin-top:10px;padding:11px 14px;font-size:1rem;
-      border:2px solid var(--border);border-radius:10px;background:#fff;outline:none;cursor:pointer;}
-    .activity-select:focus{border-color:var(--primary-light);}
-    .msg{margin-top:10px;padding:10px 14px;border-radius:8px;font-weight:600;font-size:.9rem;display:none;}
-    .msg.success{background:#e8f5e9;color:#2e7d32;}
-    .msg.error{background:#ffebee;color:#c62828;}
-
-    /* STATS */
-    .stats-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
-    .stat-card{flex:1;min-width:95px;background:var(--card);border-radius:12px;
-      padding:10px 12px;box-shadow:var(--shadow);text-align:center;}
-    .stat-num{font-size:1.6rem;font-weight:800;color:var(--primary);}
-    .stat-label{font-size:.66rem;color:var(--muted);text-transform:uppercase;
-      letter-spacing:.4px;margin-top:2px;line-height:1.3;}
-
-    /* GRID */
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:14px;}
-    .activity-card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);
-      overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;}
-    .activity-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(26,35,126,.15);}
-    .card-header{padding:12px 15px 9px;display:flex;align-items:flex-start;gap:9px;}
-    .card-icon{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.2);
-      display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;margin-top:2px;}
-    .card-header-info{flex:1;min-width:0;}
-    .card-title{font-size:.88rem;font-weight:700;color:#fff;}
-    .card-subtitle{font-size:.7rem;color:rgba(255,255,255,.75);margin-top:1px;}
-    .badge{background:rgba(255,255,255,.25);color:#fff;font-weight:800;font-size:.82rem;
-      padding:3px 9px;border-radius:14px;min-width:28px;text-align:center;flex-shrink:0;margin-top:2px;}
-    .responsabil-strip{margin:0 14px;padding:7px 11px;background:rgba(255,255,255,.18);
-      border-radius:8px;display:flex;align-items:center;gap:7px;margin-bottom:9px;}
-    .resp-label{font-size:.68rem;color:rgba(255,255,255,.8);font-weight:600;
-      text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
-    .resp-name{font-size:.85rem;font-weight:700;color:#fff;flex:1;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .resp-name.empty{color:rgba(255,255,255,.5);font-weight:400;font-style:italic;}
-    .btn-edit-resp{background:rgba(255,255,255,.25);border:none;color:#fff;width:24px;height:24px;
-      border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;
-      justify-content:center;font-size:.78rem;transition:background .15s;}
-    .btn-edit-resp:hover{background:rgba(255,255,255,.4);}
-    .resp-edit-row{display:none;margin:0 14px 9px;gap:5px;}
-    .resp-edit-row.show{display:flex;}
-    .resp-input{flex:1;padding:6px 9px;font-size:.85rem;border:2px solid rgba(255,255,255,.5);
-      border-radius:7px;background:rgba(255,255,255,.15);color:#fff;outline:none;font-weight:600;}
-    .resp-input::placeholder{color:rgba(255,255,255,.5);}
-    .resp-input:focus{border-color:rgba(255,255,255,.85);}
-    .btn-save-resp{padding:6px 12px;background:rgba(255,255,255,.9);color:var(--primary);
-      border:none;border-radius:7px;font-weight:700;font-size:.8rem;cursor:pointer;}
-    .btn-save-resp:hover{background:#fff;}
-    .btn-cancel-resp{padding:6px 9px;background:rgba(255,255,255,.2);color:#fff;
-      border:none;border-radius:7px;font-weight:700;font-size:.8rem;cursor:pointer;}
-    .card-body{padding:10px 14px;flex:1;}
-    .users-label{font-size:.7rem;font-weight:700;color:var(--muted);
-      text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;}
-    .user-chip{display:inline-flex;align-items:center;gap:5px;background:#f0f2f8;
-      border:1.5px solid #dde1f0;border-radius:17px;padding:3px 7px 3px 11px;
-      margin:2px;font-size:.82rem;font-weight:600;}
-    .chip-time{font-size:.67rem;color:var(--muted);font-weight:400;}
-    .remove-btn{background:#ffebee;color:#c62828;border:none;border-radius:50%;
-      width:18px;height:18px;cursor:pointer;font-weight:800;font-size:.76rem;
-      display:flex;align-items:center;justify-content:center;}
-    .remove-btn:hover{background:var(--danger);color:#fff;}
-    .empty-state{color:var(--muted);font-size:.8rem;text-align:center;padding:12px 0;font-style:italic;}
-
-    .c0{background:linear-gradient(135deg,#1565c0,#1e88e5);}
-    .c1{background:linear-gradient(135deg,#6a1b9a,#8e24aa);}
-    .c2{background:linear-gradient(135deg,#00695c,#00897b);}
-    .c3{background:linear-gradient(135deg,#e65100,#fb8c00);}
-    .c4{background:linear-gradient(135deg,#880e4f,#d81b60);}
-    .c5{background:linear-gradient(135deg,#1a237e,#283593);}
-    .c6{background:linear-gradient(135deg,#004d40,#00796b);}
-    .c7{background:linear-gradient(135deg,#4a148c,#7b1fa2);}
-
-    /* EXPORT TAB */
-    .export-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:20px;}
-    .exp-card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
-    .exp-card-hdr{padding:13px 18px;display:flex;align-items:center;gap:11px;color:#fff;}
-    .exp-card-hdr .ei{width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.2);
-      display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
-    .exp-card-hdr h3{font-size:.95rem;font-weight:700;}
-    .exp-card-hdr p{font-size:.73rem;opacity:.8;margin-top:1px;}
-    .exp-card-body{padding:18px;}
-    .hdr-blue{background:linear-gradient(135deg,#1565c0,#1e88e5);}
-    .hdr-green{background:linear-gradient(135deg,#1b5e20,#2e7d32);}
-    .hdr-red{background:linear-gradient(135deg,#b71c1c,#e53935);}
-    .hdr-grey{background:linear-gradient(135deg,#37474f,#546e7a);}
-    .exp-btns{display:flex;flex-direction:column;gap:9px;}
-    .exp-btn{width:100%;padding:11px 14px;border:none;border-radius:9px;font-size:.88rem;
-      font-weight:700;cursor:pointer;display:flex;align-items:center;gap:9px;transition:all .2s;}
-    .eb-json{background:#e3f2fd;color:#1565c0;border:2px solid #90caf9;}
-    .eb-json:hover{background:#bbdefb;}
-    .eb-excel{background:#e8f5e9;color:#1b5e20;border:2px solid #81c784;}
-    .eb-excel:hover{background:#c8e6c9;}
-    .eb-csv{background:#f3e5f5;color:#6a1b9a;border:2px solid #ce93d8;}
-    .eb-csv:hover{background:#e1bee7;}
-    .exp-divider{border:none;border-top:1px solid var(--border);margin:3px 0;}
-
-    /* Firebase info card */
-    .fb-info{background:#f8f9fc;border-radius:10px;padding:14px;font-size:.83rem;border:1.5px solid var(--border);}
-    .fb-info-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-    .fb-info-row:last-child{margin-bottom:0;}
-    .fb-info-label{color:var(--muted);font-weight:600;min-width:90px;}
-    .fb-info-val{color:var(--text);font-weight:700;word-break:break-all;}
-    .fb-url{font-size:.75rem;color:#1565c0;word-break:break-all;}
-
-    .reset-warn{background:#ffebee;border:2px solid #ef9a9a;border-radius:10px;
-      padding:14px;margin-bottom:14px;color:#b71c1c;font-size:.85rem;}
-    .reset-warn strong{display:block;font-size:.95rem;margin-bottom:3px;}
-    .reset-btns{display:flex;gap:8px;flex-wrap:wrap;}
-    .btn-rst{padding:10px 18px;color:#fff;border:none;border-radius:9px;font-weight:700;
-      cursor:pointer;font-size:.85rem;transition:background .2s;}
-    .btn-rst-s{background:#ff6f00;} .btn-rst-s:hover{background:#e65100;}
-    .btn-rst-a{background:#b71c1c;} .btn-rst-a:hover{background:var(--danger);}
-
-    /* ISTORIC */
-    .filter-bar{background:var(--card);border-radius:14px;box-shadow:var(--shadow);
-      padding:14px 16px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:9px;align-items:flex-end;}
-    .filter-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;}
-    .filter-group label{font-size:.7rem;font-weight:700;color:var(--muted);
-      text-transform:uppercase;letter-spacing:.5px;}
-    .filter-input,.filter-select{padding:8px 10px;border:2px solid var(--border);
-      border-radius:8px;font-size:.86rem;outline:none;background:#fff;transition:border .2s;}
-    .filter-input:focus,.filter-select:focus{border-color:var(--primary-light);}
-    .filter-actions{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;}
-    .btn-f{padding:8px 13px;border:none;border-radius:8px;cursor:pointer;
-      font-size:.83rem;font-weight:700;transition:all .15s;white-space:nowrap;}
-    .bf-apply{background:var(--primary);color:#fff;} .bf-apply:hover{background:var(--primary-light);}
-    .bf-reset{background:#f0f2f8;color:var(--primary);border:2px solid var(--border);} .bf-reset:hover{background:#dde1f0;}
-    .bf-excel{background:#1b5e20;color:#fff;} .bf-excel:hover{background:#2e7d32;}
-    .bf-csv{background:#6a1b9a;color:#fff;} .bf-csv:hover{background:#7b1fa2;}
-    .bf-del{background:#b71c1c;color:#fff;} .bf-del:hover{background:var(--danger);}
-
-    .hist-summary{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;}
-    .hist-stat{background:var(--card);border-radius:9px;padding:8px 14px;
-      box-shadow:var(--shadow);font-size:.8rem;display:flex;align-items:center;gap:6px;}
-    .hist-stat strong{font-size:1rem;color:var(--primary);}
-
-    .table-wrap{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
-    .table-hdr-bar{background:linear-gradient(135deg,#37474f,#546e7a);color:#fff;
-      padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
-    .table-hdr-bar span{font-weight:700;font-size:.88rem;}
-    .page-info{font-size:.76rem;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:7px;}
-    .hist-table{width:100%;border-collapse:collapse;font-size:.83rem;}
-    .hist-table thead th{background:#f8f9fc;color:var(--primary);padding:9px 11px;
-      text-align:left;font-size:.73rem;text-transform:uppercase;letter-spacing:.4px;
-      border-bottom:2px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
-    .hist-table thead th:hover{background:#eef0fa;}
-    .hist-table thead th.sorted{color:var(--primary-light);}
-    .hist-table tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
-    .hist-table tbody tr:hover{background:#f8f9fc;}
-    .hist-table td{padding:8px 11px;vertical-align:middle;}
-    .td-date{color:var(--muted);font-size:.74rem;white-space:nowrap;}
-    .td-user{font-weight:700;}
-    .badge-in{background:#e8f5e9;color:#2e7d32;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;}
-    .badge-out{background:#ffebee;color:#c62828;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;}
-    .badge-move{background:#fff8e1;color:#f57f17;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;}
-    .badge-resp{background:#e8eaf6;color:#1a237e;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;}
-    .td-act span{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:8px;font-size:.76rem;font-weight:600;}
-    .no-data{text-align:center;padding:30px;color:var(--muted);font-style:italic;}
-    .pagination{display:flex;align-items:center;justify-content:center;gap:4px;
-      padding:10px;background:var(--card);border-top:1px solid var(--border);}
-    .pg-btn{padding:4px 10px;border:1.5px solid var(--border);border-radius:6px;
-      background:#fff;cursor:pointer;font-size:.8rem;font-weight:600;color:var(--primary);transition:all .15s;}
-    .pg-btn:hover:not(:disabled){background:var(--primary);color:#fff;border-color:var(--primary);}
-    .pg-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
-    .pg-btn:disabled{opacity:.4;cursor:not-allowed;}
-
-    /* TOAST */
-    .toast{position:fixed;bottom:22px;right:22px;z-index:999;padding:13px 20px;border-radius:11px;
-      font-weight:700;font-size:.9rem;box-shadow:0 8px 24px rgba(0,0,0,.2);
-      display:flex;align-items:center;gap:9px;
-      transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none;}
-    .toast.show{transform:translateY(0);opacity:1;}
-    .toast.success{background:#1b5e20;color:#fff;}
-    .toast.error{background:#b71c1c;color:#fff;}
-    .toast.info{background:#1565c0;color:#fff;}
-
-    ::-webkit-scrollbar{width:5px;}
-    ::-webkit-scrollbar-thumb{background:#bbb;border-radius:4px;}
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sistem Scanare Activitati OVS</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{--primary:#1a237e;--primary-light:#3949ab;--danger:#e53935;--bg:#f0f2f8;--card:#fff;--text:#1a1a2e;--muted:#6b7280;--border:#e0e0e0;--shadow:0 4px 20px rgba(26,35,126,.10);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+#loadingOverlay{position:fixed;inset:0;background:linear-gradient(135deg,#1a237e,#3949ab);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;color:#fff;transition:opacity .4s;}
+#loadingOverlay.hidden{display:none;}
+.loader-spin{font-size:3rem;animation:spin 1.2s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.conn-badge{font-size:.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:flex;align-items:center;gap:6px;}
+.conn-badge.online{background:rgba(76,175,80,.25);color:#a5d6a7;}
+.conn-badge.offline{background:rgba(244,67,54,.25);color:#ef9a9a;}
+.conn-dot{width:8px;height:8px;border-radius:50%;}
+.conn-badge.online .conn-dot{background:#4caf50;box-shadow:0 0 6px #4caf50;}
+.conn-badge.offline .conn-dot{background:#f44336;}
+header{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 12px rgba(26,35,126,.25);position:sticky;top:0;z-index:200;}
+.logo{display:flex;align-items:center;gap:10px;}
+header h1{font-size:1.05rem;font-weight:700;}
+.header-right{display:flex;align-items:center;gap:10px;}
+.clock{font-size:.9rem;font-weight:600;background:rgba(255,255,255,.15);padding:5px 12px;border-radius:20px;letter-spacing:1px;}
+.tabs{max-width:1400px;margin:14px auto 0;padding:0 14px;display:flex;gap:5px;flex-wrap:wrap;}
+.tab-btn{padding:8px 18px;border:none;border-radius:10px 10px 0 0;font-size:.88rem;font-weight:600;cursor:pointer;background:#dde1f0;color:var(--primary);transition:all .2s;}
+.tab-btn.active{background:var(--card);box-shadow:0 -2px 8px rgba(26,35,126,.1);}
+.tab-btn:hover:not(.active){background:#cdd1e8;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.main-wrap{max-width:1400px;margin:0 auto;padding:14px;}
+.scan-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:16px;}
+.panel-title{font-size:.78rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;}
+.scan-row{display:flex;gap:10px;}
+.scan-input{flex:1;padding:12px 15px;font-size:1rem;border:2px solid var(--border);border-radius:10px;outline:none;transition:border .2s;}
+.scan-input:focus{border-color:var(--primary-light);}
+.scan-btn{padding:12px 22px;font-size:.92rem;font-weight:700;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;}
+.scan-btn:hover{background:var(--primary-light);}
+.act-select{width:100%;margin-top:10px;padding:11px 14px;font-size:1rem;border:2px solid var(--border);border-radius:10px;background:#fff;outline:none;cursor:pointer;}
+.act-select:focus{border-color:var(--primary-light);}
+.msg{margin-top:10px;padding:10px 14px;border-radius:8px;font-weight:600;font-size:.9rem;display:none;}
+.msg.success{background:#e8f5e9;color:#2e7d32;}
+.msg.error{background:#ffebee;color:#c62828;}
+.stats-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.stat-card{flex:1;min-width:95px;background:var(--card);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow);text-align:center;}
+.stat-num{font-size:1.6rem;font-weight:800;color:var(--primary);}
+.stat-label{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;line-height:1.3;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:14px;}
+.act-card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;}
+.act-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(26,35,126,.15);}
+.card-hdr{padding:12px 15px 9px;display:flex;align-items:flex-start;gap:9px;}
+.card-icon{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;margin-top:2px;}
+.card-hdr-info{flex:1;min-width:0;}
+.card-title{font-size:.88rem;font-weight:700;color:#fff;}
+.card-sub{font-size:.7rem;color:rgba(255,255,255,.75);margin-top:1px;}
+.cbadge{background:rgba(255,255,255,.25);color:#fff;font-weight:800;font-size:.82rem;padding:3px 9px;border-radius:14px;min-width:28px;text-align:center;flex-shrink:0;margin-top:2px;}
+.resp-strip{margin:0 14px;padding:7px 11px;background:rgba(255,255,255,.18);border-radius:8px;display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+.resp-lbl{font-size:.68rem;color:rgba(255,255,255,.8);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+.resp-nm{font-size:.85rem;font-weight:700;color:#fff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.resp-nm.empty{color:rgba(255,255,255,.5);font-weight:400;font-style:italic;}
+.btn-edit-r{background:rgba(255,255,255,.25);border:none;color:#fff;width:24px;height:24px;border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.78rem;}
+.btn-edit-r:hover{background:rgba(255,255,255,.4);}
+.resp-edit{display:none;margin:0 14px 9px;gap:5px;}
+.resp-edit.show{display:flex;}
+.resp-inp{flex:1;padding:6px 9px;font-size:.85rem;border:2px solid rgba(255,255,255,.5);border-radius:7px;background:rgba(255,255,255,.15);color:#fff;outline:none;font-weight:600;}
+.resp-inp::placeholder{color:rgba(255,255,255,.5);}
+.resp-inp:focus{border-color:rgba(255,255,255,.85);}
+.btn-sv-r{padding:6px 12px;background:rgba(255,255,255,.9);color:var(--primary);border:none;border-radius:7px;font-weight:700;font-size:.8rem;cursor:pointer;}
+.btn-sv-r:hover{background:#fff;}
+.btn-cn-r{padding:6px 9px;background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.8rem;cursor:pointer;}
+.card-body{padding:10px 14px;flex:1;}
+.users-lbl{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;}
+.uchip{display:inline-flex;align-items:center;gap:5px;background:#f0f2f8;border:1.5px solid #dde1f0;border-radius:17px;padding:3px 7px 3px 11px;margin:2px;font-size:.82rem;font-weight:600;}
+.chip-t{font-size:.67rem;color:var(--muted);font-weight:400;}
+.rm-btn{background:#ffebee;color:#c62828;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-weight:800;font-size:.76rem;display:flex;align-items:center;justify-content:center;}
+.rm-btn:hover{background:var(--danger);color:#fff;}
+.empty-st{color:var(--muted);font-size:.8rem;text-align:center;padding:12px 0;font-style:italic;}
+.c0{background:linear-gradient(135deg,#1565c0,#1e88e5);}
+.c1{background:linear-gradient(135deg,#6a1b9a,#8e24aa);}
+.c2{background:linear-gradient(135deg,#00695c,#00897b);}
+.c3{background:linear-gradient(135deg,#e65100,#fb8c00);}
+.c4{background:linear-gradient(135deg,#880e4f,#d81b60);}
+.c5{background:linear-gradient(135deg,#1a237e,#283593);}
+.c6{background:linear-gradient(135deg,#004d40,#00796b);}
+.c7{background:linear-gradient(135deg,#4a148c,#7b1fa2);}
+.exp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:20px;}
+.exp-card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+.exp-hdr{padding:13px 18px;display:flex;align-items:center;gap:11px;color:#fff;}
+.exp-hdr .ei{width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
+.exp-hdr h3{font-size:.95rem;font-weight:700;}
+.exp-hdr p{font-size:.73rem;opacity:.8;margin-top:1px;}
+.exp-body{padding:16px;}
+.exp-btns{display:flex;flex-direction:column;gap:9px;}
+.exp-btn{width:100%;padding:11px 14px;border:none;border-radius:9px;font-size:.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:9px;transition:all .2s;}
+.eb-excel{background:#e8f5e9;color:#1b5e20;border:2px solid #81c784;} .eb-excel:hover{background:#c8e6c9;}
+.eb-csv{background:#f3e5f5;color:#6a1b9a;border:2px solid #ce93d8;} .eb-csv:hover{background:#e1bee7;}
+.eb-json{background:#e3f2fd;color:#1565c0;border:2px solid #90caf9;} .eb-json:hover{background:#bbdefb;}
+.hdiv{border:none;border-top:1px solid var(--border);margin:3px 0;}
+.hdr-blue{background:linear-gradient(135deg,#1565c0,#1e88e5);}
+.hdr-green{background:linear-gradient(135deg,#1b5e20,#2e7d32);}
+.hdr-red{background:linear-gradient(135deg,#b71c1c,#e53935);}
+.hdr-grey{background:linear-gradient(135deg,#37474f,#546e7a);}
+.rst-warn{background:#ffebee;border:2px solid #ef9a9a;border-radius:10px;padding:14px;margin-bottom:14px;color:#b71c1c;font-size:.85rem;}
+.rst-warn strong{display:block;font-size:.95rem;margin-bottom:3px;}
+.rst-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.btn-rst{padding:10px 18px;color:#fff;border:none;border-radius:9px;font-weight:700;cursor:pointer;font-size:.85rem;}
+.btn-rst-s{background:#ff6f00;} .btn-rst-s:hover{background:#e65100;}
+.btn-rst-a{background:#b71c1c;} .btn-rst-a:hover{background:var(--danger);}
+.fb-info{background:#f8f9fc;border-radius:10px;padding:14px;font-size:.83rem;border:1.5px solid var(--border);}
+.fb-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;}
+.fb-row:last-child{margin-bottom:0;}
+.fb-lbl{color:var(--muted);font-weight:600;min-width:90px;font-size:.8rem;}
+.fb-val{color:var(--text);font-weight:700;word-break:break-all;font-size:.8rem;}
+.filter-bar{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:14px 16px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:9px;align-items:flex-end;}
+.fg{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;}
+.fg label{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.fi,.fs{padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:.86rem;outline:none;background:#fff;transition:border .2s;}
+.fi:focus,.fs:focus{border-color:var(--primary-light);}
+.factions{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;}
+.bf{padding:8px 13px;border:none;border-radius:8px;cursor:pointer;font-size:.83rem;font-weight:700;white-space:nowrap;}
+.bf-apply{background:var(--primary);color:#fff;} .bf-apply:hover{background:var(--primary-light);}
+.bf-reset{background:#f0f2f8;color:var(--primary);border:2px solid var(--border);}
+.bf-excel{background:#1b5e20;color:#fff;} .bf-excel:hover{background:#2e7d32;}
+.bf-csv{background:#6a1b9a;color:#fff;} .bf-csv:hover{background:#7b1fa2;}
+.bf-del{background:#b71c1c;color:#fff;} .bf-del:hover{background:var(--danger);}
+.hsum{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;}
+.hs{background:var(--card);border-radius:9px;padding:8px 14px;box-shadow:var(--shadow);font-size:.8rem;display:flex;align-items:center;gap:6px;}
+.hs strong{font-size:1rem;color:var(--primary);}
+.twrap{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+.thbar{background:linear-gradient(135deg,#37474f,#546e7a);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.thbar span{font-weight:700;font-size:.88rem;}
+.pgi{font-size:.76rem;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:7px;}
+.htbl{width:100%;border-collapse:collapse;font-size:.83rem;}
+.htbl thead th{background:#f8f9fc;color:var(--primary);padding:9px 11px;text-align:left;font-size:.73rem;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+.htbl thead th:hover{background:#eef0fa;}
+.htbl thead th.sorted{color:var(--primary-light);}
+.htbl tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
+.htbl tbody tr:hover{background:#f8f9fc;}
+.htbl td{padding:8px 11px;vertical-align:middle;}
+.tdd{color:var(--muted);font-size:.74rem;white-space:nowrap;}
+.tdu{font-weight:700;}
+.bin{background:#e8f5e9;color:#2e7d32;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;}
+.bout{background:#ffebee;color:#c62828;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;}
+.bmove{background:#fff8e1;color:#f57f17;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;}
+.bresp{background:#e8eaf6;color:#1a237e;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;}
+.tda span{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:8px;font-size:.76rem;font-weight:600;}
+.nodata{text-align:center;padding:30px;color:var(--muted);font-style:italic;}
+.pgn{display:flex;align-items:center;justify-content:center;gap:4px;padding:10px;background:var(--card);border-top:1px solid var(--border);}
+.pgb{padding:4px 10px;border:1.5px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:.8rem;font-weight:600;color:var(--primary);transition:all .15s;}
+.pgb:hover:not(:disabled){background:var(--primary);color:#fff;border-color:var(--primary);}
+.pgb.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.pgb:disabled{opacity:.4;cursor:not-allowed;}
+.toast{position:fixed;bottom:22px;right:22px;z-index:999;padding:13px 20px;border-radius:11px;font-weight:700;font-size:.9rem;box-shadow:0 8px 24px rgba(0,0,0,.2);display:flex;align-items:center;gap:9px;transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{background:#1b5e20;color:#fff;}
+.toast.error{background:#b71c1c;color:#fff;}
+.toast.info{background:#1565c0;color:#fff;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:#bbb;border-radius:4px;}
+</style>
 </head>
 <body>
-
-<!-- LOADING OVERLAY -->
-<div id="loadingOverlay">
-  <div class="loader-icon">🔄</div>
-  <div class="loader-text">Se conectează la baza de date...</div>
-  <div class="loader-sub">Vă rugăm așteptați</div>
-</div>
-
-<!-- HEADER -->
+<div id="loadingOverlay"><div class="loader-spin">&#x1F504;</div><div style="font-size:1.2rem;font-weight:600;">Se conecteaza la baza de date...</div><div style="font-size:.85rem;opacity:.7;">Va rugam asteptati</div></div>
 <header>
-  <div class="logo">
-    <svg viewBox="0 0 36 36" fill="none">
-      <rect width="36" height="36" rx="8" fill="rgba(255,255,255,.2)"/>
-      <path d="M10 22L18 10L26 22" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      <rect x="13" y="22" width="10" height="6" rx="1.5" stroke="#fff" stroke-width="2" fill="none"/>
-      <circle cx="18" cy="17" r="2" fill="#fff"/>
-    </svg>
-    <h1>Sistem Scanare Activități — OVS</h1>
-  </div>
-  <div class="header-right">
-    <div class="conn-badge offline" id="connBadge">
-      <div class="conn-dot"></div>
-      <span id="connText">Offline</span>
-    </div>
-    <div class="clock" id="clock">--:--:--</div>
-  </div>
+<div class="logo"><svg viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="8" fill="rgba(255,255,255,.2)"/><path d="M10 22L18 10L26 22" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="13" y="22" width="10" height="6" rx="1.5" stroke="#fff" stroke-width="2" fill="none"/><circle cx="18" cy="17" r="2" fill="#fff"/></svg><h1>Sistem Scanare Activitati OVS</h1></div>
+<div class="header-right"><div class="conn-badge offline" id="connBadge"><div class="conn-dot"></div><span id="connText">Offline</span></div><div class="clock" id="clock">--:--:--</div></div>
 </header>
-
-<!-- TABS -->
 <div class="tabs">
-  <button class="tab-btn active" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
-  <button class="tab-btn"        onclick="switchTab('export',this)">📤 Export Date</button>
-  <button class="tab-btn"        onclick="switchTab('istoric',this)">📋 Istoric</button>
+<button class="tab-btn active" onclick="switchTab('dashboard',this)">&#128202; Dashboard</button>
+<button class="tab-btn" onclick="switchTab('export',this)">&#128228; Export Date</button>
+<button class="tab-btn" onclick="switchTab('istoric',this)">&#128203; Istoric</button>
 </div>
-
-<!-- ════════ DASHBOARD ════════ -->
 <div class="tab-content active" id="tab-dashboard">
-  <div class="main-wrap">
-    <div class="scan-card">
-      <div class="panel-title">⌨️ Introducere User</div>
-      <div class="scan-row">
-        <input class="scan-input" id="scanInput" type="text"
-          placeholder="Introdu sau scanează ID-ul userului..."
-          autofocus onkeydown="if(event.key==='Enter') assignUser()"/>
-        <button class="scan-btn" onclick="assignUser()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Asignează
-        </button>
-      </div>
-      <select class="activity-select" id="activitySelect">
-        <option value="">— Selectează activitatea —</option>
-        <option value="0">Sorter Optimus</option>
-        <option value="1">Radra</option>
-        <option value="2">Cântare Podea + Dastec &amp; Matiro</option>
-        <option value="3">Consolidare Podea</option>
-        <option value="4">Încărcări și Descărcări</option>
-        <option value="5">Volume</option>
-        <option value="6">Reetichetare</option>
-        <option value="7">Atipice</option>
-      </select>
-      <div class="msg" id="msgBox"></div>
-    </div>
-    <div class="stats-bar" id="statsBar"></div>
-    <div class="grid"     id="activityGrid"></div>
-  </div>
+<div class="main-wrap">
+<div class="scan-card">
+<div class="panel-title">&#9000;&#65039; Introducere User</div>
+<div class="scan-row">
+<input class="scan-input" id="scanInput" type="text" placeholder="Introdu sau scaneaza ID-ul userului..." autofocus />
+<button class="scan-btn" onclick="assignUser()">&#10003; Asigneaza</button>
 </div>
-
-<!-- ════════ EXPORT DATE ════════ -->
+<select class="act-select" id="activitySelect">
+<option value="">- Selecteaza activitatea -</option>
+<option value="0">Sorter Optimus</option>
+<option value="1">Radra</option>
+<option value="2">Cantare Podea + Dastec &amp; Matiro</option>
+<option value="3">Consolidare Podea</option>
+<option value="4">Incarcari si Descarcari</option>
+<option value="5">Volume</option>
+<option value="6">Reetichetare</option>
+<option value="7">Atipice</option>
+</select>
+<div class="msg" id="msgBox"></div>
+</div>
+<div class="stats-bar" id="statsBar"></div>
+<div class="grid" id="activityGrid"></div>
+</div></div>
 <div class="tab-content" id="tab-export">
-  <div class="main-wrap">
-    <div class="export-grid">
-
-      <!-- EXCEL -->
-      <div class="exp-card">
-        <div class="exp-card-hdr hdr-green">
-          <div class="ei">🟢</div>
-          <div><h3>Export Excel</h3><p>Fișier .xlsx cu foi multiple</p></div>
-        </div>
-        <div class="exp-card-body">
-          <div class="exp-btns">
-            <button class="exp-btn eb-excel" onclick="exportExcel('full')">🟢 Export COMPLET (toate foile)</button>
-            <button class="exp-btn eb-excel" onclick="exportExcel('istoric')">📋 Export Excel — Istoric</button>
-            <button class="exp-btn eb-excel" onclick="exportExcel('stare')">👥 Export Excel — Stare Curentă</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- CSV + JSON -->
-      <div class="exp-card">
-        <div class="exp-card-hdr hdr-blue">
-          <div class="ei">📊</div>
-          <div><h3>Export CSV / JSON</h3><p>Format compatibil Excel clasic & backup</p></div>
-        </div>
-        <div class="exp-card-body">
-          <div class="exp-btns">
-            <button class="exp-btn eb-csv"  onclick="exportCSV()">📊 Export CSV (pentru Excel)</button>
-            <hr class="exp-divider"/>
-            <button class="exp-btn eb-json" onclick="exportJSONBackup()">💾 Backup JSON complet</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- RESETARE -->
-      <div class="exp-card">
-        <div class="exp-card-hdr hdr-red">
-          <div class="ei">🗑️</div>
-          <div><h3>Resetare Date</h3><p>Șterge date din baza de date</p></div>
-        </div>
-        <div class="exp-card-body">
-          <div class="reset-warn"><strong>⚠️ Atenție!</strong>Acțiunile afectează TOȚI utilizatorii conectați!</div>
-          <div class="reset-btns">
-            <button class="btn-rst btn-rst-s" onclick="resetState()">👥 Resetează Starea Curentă</button>
-            <button class="btn-rst btn-rst-a" onclick="resetAll()">💣 Șterge Tot</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- FIREBASE INFO -->
-      <div class="exp-card">
-        <div class="exp-card-hdr hdr-grey">
-          <div class="ei">🔥</div>
-          <div><h3>Firebase Database</h3><p>Informații conexiune live</p></div>
-        </div>
-        <div class="exp-card-body">
-          <div class="fb-info">
-            <div class="fb-info-row">
-              <span class="fb-info-label">Status:</span>
-              <span class="fb-info-val" id="fbStatusDetail">Se verifică...</span>
-            </div>
-            <div class="fb-info-row">
-              <span class="fb-info-label">Proiect:</span>
-              <span class="fb-info-val">activitati-ovs</span>
-            </div>
-            <div class="fb-info-row">
-              <span class="fb-info-label">Database:</span>
-              <span class="fb-url">europe-west1.firebasedatabase.app</span>
-            </div>
-            <div class="fb-info-row">
-              <span class="fb-info-label">Useri activi:</span>
-              <span class="fb-info-val" id="fbUserCount">—</span>
-            </div>
-            <div class="fb-info-row">
-              <span class="fb-info-label">Înregistrări:</span>
-              <span class="fb-info-val" id="fbHistCount">—</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<!-- ════════ ISTORIC ════════ -->
+<div class="main-wrap">
+<div class="exp-grid">
+<div class="exp-card"><div class="exp-hdr hdr-green"><div class="ei">&#x1F7E2;</div><div><h3>Export Excel</h3><p>Fisier .xlsx cu foi multiple</p></div></div>
+<div class="exp-body"><div class="exp-btns">
+<button class="exp-btn eb-excel" onclick="exportExcel('full')">&#x1F7E2; Export COMPLET (toate foile)</button>
+<button class="exp-btn eb-excel" onclick="exportExcel('istoric')">&#x1F4CB; Export Excel - Istoric</button>
+<button class="exp-btn eb-excel" onclick="exportExcel('stare')">&#x1F465; Export Excel - Stare Curenta</button>
+</div></div></div>
+<div class="exp-card"><div class="exp-hdr hdr-blue"><div class="ei">&#128202;</div><div><h3>Export CSV / JSON</h3><p>Format compatibil Excel &amp; backup</p></div></div>
+<div class="exp-body"><div class="exp-btns">
+<button class="exp-btn eb-csv" onclick="exportCSV()">&#128202; Export CSV</button>
+<hr class="hdiv"/>
+<button class="exp-btn eb-json" onclick="exportJSONBackup()">&#128190; Backup JSON complet</button>
+</div></div></div>
+<div class="exp-card"><div class="exp-hdr hdr-red"><div class="ei">&#x1F5D1;&#xFE0F;</div><div><h3>Resetare Date</h3><p>Sterge date din baza de date</p></div></div>
+<div class="exp-body"><div class="rst-warn"><strong>&#9888;&#65039; Atentie!</strong> Afecteaza TOTI utilizatorii conectati!</div>
+<div class="rst-btns"><button class="btn-rst btn-rst-s" onclick="resetState()">&#x1F465; Reseteaza Starea Curenta</button>
+<button class="btn-rst btn-rst-a" onclick="resetAll()">&#128163; Sterge Tot</button></div></div></div>
+<div class="exp-card"><div class="exp-hdr hdr-grey"><div class="ei">&#x1F525;</div><div><h3>Firebase Database</h3><p>Informatii conexiune live</p></div></div>
+<div class="exp-body"><div class="fb-info">
+<div class="fb-row"><span class="fb-lbl">Status:</span><span class="fb-val" id="fbStatus">Se verifica...</span></div>
+<div class="fb-row"><span class="fb-lbl">Proiect:</span><span class="fb-val">activitati-ovs</span></div>
+<div class="fb-row"><span class="fb-lbl">Useri activi:</span><span class="fb-val" id="fbUsers">-</span></div>
+<div class="fb-row"><span class="fb-lbl">Inregistrari:</span><span class="fb-val" id="fbHist">-</span></div>
+</div></div></div>
+</div></div></div>
 <div class="tab-content" id="tab-istoric">
-  <div class="main-wrap">
-    <div class="filter-bar">
-      <div class="filter-group">
-        <label>User ID</label>
-        <input class="filter-input" id="f-user" type="text" placeholder="ex: USR001"/>
-      </div>
-      <div class="filter-group">
-        <label>Responsabil</label>
-        <input class="filter-input" id="f-resp" type="text" placeholder="Nume responsabil"/>
-      </div>
-      <div class="filter-group">
-        <label>Activitate</label>
-        <select class="filter-select" id="f-activity">
-          <option value="">Toate</option>
-          <option>Sorter Optimus</option><option>Radra</option>
-          <option>Cântare Podea + Dastec &amp; Matiro</option>
-          <option>Consolidare Podea</option><option>Încărcări și Descărcări</option>
-          <option>Volume</option><option>Reetichetare</option><option>Atipice</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label>Tip acțiune</label>
-        <select class="filter-select" id="f-type">
-          <option value="">Toate</option>
-          <option value="in">Asignat (IN)</option>
-          <option value="out">Eliminat (OUT)</option>
-          <option value="move">Mutat</option>
-          <option value="resp">Schimb Responsabil</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label>De la dată</label>
-        <input class="filter-input" id="f-date-from" type="date"/>
-      </div>
-      <div class="filter-group">
-        <label>Până la dată</label>
-        <input class="filter-input" id="f-date-to" type="date"/>
-      </div>
-      <div class="filter-actions">
-        <button class="btn-f bf-apply" onclick="applyFilters()">🔍 Filtrează</button>
-        <button class="btn-f bf-reset" onclick="resetFilters()">↺ Reset</button>
-        <button class="btn-f bf-excel" onclick="exportExcel('filtrat')">🟢 Excel</button>
-        <button class="btn-f bf-csv"   onclick="exportCSV()">📊 CSV</button>
-        <button class="btn-f bf-del"   onclick="confirmClearHistory()">🗑 Șterge</button>
-      </div>
-    </div>
-    <div class="hist-summary" id="histSummary"></div>
-    <div class="table-wrap">
-      <div class="table-hdr-bar">
-        <span>📋 Jurnal Activitate — Sincronizat Live 🔴</span>
-        <span class="page-info" id="pageInfo"></span>
-      </div>
-      <div style="overflow-x:auto;">
-        <table class="hist-table">
-          <thead>
-            <tr>
-              <th onclick="sortTable('datetime')"    id="th-datetime">Data &amp; Ora ↕</th>
-              <th onclick="sortTable('uid')"         id="th-uid">User ID ↕</th>
-              <th onclick="sortTable('type')"        id="th-type">Acțiune ↕</th>
-              <th onclick="sortTable('activity')"    id="th-activity">Activitate ↕</th>
-              <th onclick="sortTable('responsabil')" id="th-responsabil">Responsabil ↕</th>
-              <th>Detalii</th>
-            </tr>
-          </thead>
-          <tbody id="histBody"></tbody>
-        </table>
-      </div>
-      <div class="pagination" id="pagination"></div>
-    </div>
-  </div>
-</div>
-
+<div class="main-wrap">
+<div class="filter-bar">
+<div class="fg"><label>User ID</label><input class="fi" id="f-user" type="text" placeholder="ex: USR001"/></div>
+<div class="fg"><label>Responsabil</label><input class="fi" id="f-resp" type="text" placeholder="Nume responsabil"/></div>
+<div class="fg"><label>Activitate</label><select class="fs" id="f-activity">
+<option value="">Toate</option><option>Sorter Optimus</option><option>Radra</option>
+<option>Cantare Podea + Dastec &amp; Matiro</option><option>Consolidare Podea</option>
+<option>Incarcari si Descarcari</option><option>Volume</option><option>Reetichetare</option><option>Atipice</option>
+</select></div>
+<div class="fg"><label>Tip actiune</label><select class="fs" id="f-type">
+<option value="">Toate</option><option value="in">Asignat (IN)</option>
+<option value="out">Eliminat (OUT)</option><option value="move">Mutat</option>
+<option value="resp">Schimb Responsabil</option></select></div>
+<div class="fg"><label>De la data</label><input class="fi" id="f-date-from" type="date"/></div>
+<div class="fg"><label>Pana la data</label><input class="fi" id="f-date-to" type="date"/></div>
+<div class="factions">
+<button class="bf bf-apply" onclick="applyFilters()">&#128269; Filtreaza</button>
+<button class="bf bf-reset" onclick="resetFilters()">&#8635; Reset</button>
+<button class="bf bf-excel" onclick="exportExcel('filtrat')">&#x1F7E2; Excel</button>
+<button class="bf bf-csv" onclick="exportCSV()">&#128202; CSV</button>
+<button class="bf bf-del" onclick="confirmClearHistory()">&#x1F5D1; Sterge</button>
+</div></div>
+<div class="hsum" id="histSummary"></div>
+<div class="twrap"><div class="thbar"><span>&#128203; Jurnal Activitate - Sincronizat Live &#x1F534;</span><span class="pgi" id="pageInfo"></span></div>
+<div style="overflow-x:auto;">
+<table class="htbl"><thead><tr>
+<th onclick="sortTable('datetime')" id="th-datetime">Data &amp; Ora &#8597;</th>
+<th onclick="sortTable('uid')" id="th-uid">User ID &#8597;</th>
+<th onclick="sortTable('type')" id="th-type">Actiune &#8597;</th>
+<th onclick="sortTable('activity')" id="th-activity">Activitate &#8597;</th>
+<th onclick="sortTable('responsabil')" id="th-responsabil">Responsabil &#8597;</th>
+<th>Detalii</th>
+</tr></thead><tbody id="histBody"></tbody></table>
+</div><div class="pgn" id="pagination"></div></div>
+</div></div>
 <div class="toast" id="toast"></div>
-
 <script>
-/* ════ FIREBASE CONFIG ════ */
-const firebaseConfig = {
+var firebaseConfig = {
   apiKey: "AIzaSyDyeuUE7SWipIW4bDCZvAYeQPOheJwitSk",
   authDomain: "activitati-ovs.firebaseapp.com",
   databaseURL: "https://activitati-ovs-default-rtdb.europe-west1.firebasedatabase.app",
@@ -496,451 +273,464 @@ const firebaseConfig = {
   appId: "1:683372600377:web:bd6dd6702e73fce82c41e8"
 };
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+var db = firebase.database();
 
-/* ════ ACTIVITĂȚI ════ */
-const ACTIVITIES=[
-  {name:"Sorter Optimus",                  emoji:"🔵",color:"c0",bg:"#e3f2fd",tc:"#1565c0"},
-  {name:"Radra",                           emoji:"🟣",color:"c1",bg:"#f3e5f5",tc:"#6a1b9a"},
-  {name:"Cântare Podea + Dastec & Matiro", emoji:"🟢",color:"c2",bg:"#e0f2f1",tc:"#00695c"},
-  {name:"Consolidare Podea",               emoji:"🟠",color:"c3",bg:"#fff3e0",tc:"#e65100"},
-  {name:"Încărcări și Descărcări",         emoji:"🔴",color:"c4",bg:"#fce4ec",tc:"#880e4f"},
-  {name:"Volume",                          emoji:"📦",color:"c5",bg:"#e8eaf6",tc:"#1a237e"},
-  {name:"Reetichetare",                    emoji:"🏷️",color:"c6",bg:"#e0f2f1",tc:"#004d40"},
-  {name:"Atipice",                         emoji:"⚡",color:"c7",bg:"#f3e5f5",tc:"#4a148c"},
+var ACTIVITIES = [
+  {name:"Sorter Optimus",                  emoji:"&#x1F535;",color:"c0",bg:"#e3f2fd",tc:"#1565c0"},
+  {name:"Radra",                           emoji:"&#x1F7E3;",color:"c1",bg:"#f3e5f5",tc:"#6a1b9a"},
+  {name:"Cantare Podea + Dastec & Matiro", emoji:"&#x1F7E2;",color:"c2",bg:"#e0f2f1",tc:"#00695c"},
+  {name:"Consolidare Podea",               emoji:"&#x1F7E0;",color:"c3",bg:"#fff3e0",tc:"#e65100"},
+  {name:"Incarcari si Descarcari",         emoji:"&#x1F534;",color:"c4",bg:"#fce4ec",tc:"#880e4f"},
+  {name:"Volume",                          emoji:"&#x1F4E6;",color:"c5",bg:"#e8eaf6",tc:"#1a237e"},
+  {name:"Reetichetare",                    emoji:"&#x1F3F7;",color:"c6",bg:"#e0f2f1",tc:"#004d40"},
+  {name:"Atipice",                         emoji:"&#x26A1;", color:"c7",bg:"#f3e5f5",tc:"#4a148c"}
 ];
-const PAGE_SIZE = 25;
+var PAGE_SIZE = 25;
+var state        = ACTIVITIES.map(function(){ return []; });
+var responsabili = ACTIVITIES.map(function(){ return ''; });
+var history      = [];
+var filtered     = [];
+var sortCol = 'datetime';
+var sortDir = -1;
+var curPage = 1;
+var activeTab = 'dashboard';
 
-/* ════ STATE LOCAL ════ */
-let state        = ACTIVITIES.map(()=>[]);
-let responsabili = ACTIVITIES.map(()=>'');
-let history      = [];
-let filtered     = [];
-let sortCol='datetime', sortDir=-1, curPage=1;
-let activeTab    = 'dashboard';
-let dataLoaded   = false;
-
-/* ════ CLOCK ════ */
-setInterval(()=>{
-  document.getElementById('clock').textContent=
+// Clock
+setInterval(function(){
+  document.getElementById('clock').textContent =
     new Date().toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-},1000);
+}, 1000);
 
-/* ════ CONNECTION STATUS ════ */
-db.ref('.info/connected').on('value',(snap)=>{
-  const online = snap.val()===true;
-  const badge  = document.getElementById('connBadge');
-  const text   = document.getElementById('connText');
-  const detail = document.getElementById('fbStatusDetail');
-  badge.className = 'conn-badge '+(online?'online':'offline');
-  text.textContent = online ? 'Online — Live' : 'Offline';
-  if(detail) detail.textContent = online ? '🟢 Conectat — sincronizare activă' : '🔴 Deconectat';
+// Enter key on scan input
+document.getElementById('scanInput').addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ assignUser(); }
 });
 
-/* ════ FIREBASE LISTENERS ════ */
+// Connection status
+db.ref('.info/connected').on('value', function(snap){
+  var online = snap.val() === true;
+  var badge  = document.getElementById('connBadge');
+  var text   = document.getElementById('connText');
+  var fbSt   = document.getElementById('fbStatus');
+  badge.className = 'conn-badge ' + (online ? 'online' : 'offline');
+  text.textContent = online ? 'Online - Live' : 'Offline';
+  if(fbSt) fbSt.textContent = online ? 'Conectat - sincronizare activa' : 'Deconectat';
+});
 
-// State listener
-db.ref('wms/state').on('value',(snap)=>{
-  const data = snap.val()||{};
-  state = ACTIVITIES.map((_,i)=>{
-    const users = data['act'+i];
+// Listeners
+db.ref('wms/state').on('value', function(snap){
+  var data = snap.val() || {};
+  state = ACTIVITIES.map(function(a, i){
+    var users = data['act' + i];
     if(!users) return [];
     if(Array.isArray(users)) return users.filter(Boolean);
     return Object.values(users).filter(Boolean);
   });
-  renderStats(); renderGrid();
-  if(!dataLoaded){ dataLoaded=true; hideLoading(); }
+  renderStats();
+  renderGrid();
+  hideLoading();
   updateFbInfo();
 });
 
-// Responsabili listener
-db.ref('wms/responsabili').on('value',(snap)=>{
-  const data = snap.val()||{};
-  responsabili = ACTIVITIES.map((_,i)=> data['act'+i]||'');
+db.ref('wms/responsabili').on('value', function(snap){
+  var data = snap.val() || {};
+  responsabili = ACTIVITIES.map(function(a, i){ return data['act' + i] || ''; });
   renderGrid();
 });
 
-// History listener — last 500
-db.ref('wms/history').orderByChild('datetime').limitToLast(500).on('value',(snap)=>{
-  const data = snap.val()||{};
-  history = Object.values(data).sort((a,b)=>new Date(b.datetime)-new Date(a.datetime));
-  filtered = [...history];
-  renderStats(); updateFbInfo();
-  if(activeTab==='istoric') applyFilters();
+db.ref('wms/history').orderByChild('datetime').limitToLast(500).on('value', function(snap){
+  var data = snap.val() || {};
+  history = Object.values(data).sort(function(a, b){
+    return new Date(b.datetime) - new Date(a.datetime);
+  });
+  filtered = history.slice();
+  renderStats();
+  updateFbInfo();
+  if(activeTab === 'istoric') applyFilters();
 });
 
 function hideLoading(){
   document.getElementById('loadingOverlay').classList.add('hidden');
 }
+setTimeout(function(){ hideLoading(); }, 8000);
 
 function updateFbInfo(){
-  const total=state.reduce((s,a)=>s+a.length,0);
-  const uc=document.getElementById('fbUserCount');
-  const hc=document.getElementById('fbHistCount');
-  if(uc) uc.textContent=total+' useri activi';
-  if(hc) hc.textContent=history.length+' înregistrări';
+  var total = state.reduce(function(s, a){ return s + a.length; }, 0);
+  var uc = document.getElementById('fbUsers');
+  var hc = document.getElementById('fbHist');
+  if(uc) uc.textContent = total + ' useri activi';
+  if(hc) hc.textContent = history.length + ' inregistrari';
 }
 
-/* ════ WRITE TO FIREBASE ════ */
+// Firebase writes
 function saveState(){
-  const obj={};
-  state.forEach((users,i)=>{ obj['act'+i]=users.length>0?users:null; });
+  var obj = {};
+  state.forEach(function(users, i){ obj['act' + i] = users.length > 0 ? users : null; });
   db.ref('wms/state').set(obj);
 }
 
 function saveResponsabili(){
-  const obj={};
-  responsabili.forEach((r,i)=>{ obj['act'+i]=r||null; });
+  var obj = {};
+  responsabili.forEach(function(r, i){ obj['act' + i] = r || null; });
   db.ref('wms/responsabili').set(obj);
 }
 
-function addHistoryEntry(uid,type,activity,responsabil,details){
-  const now=new Date();
+function addHistoryEntry(uid, type, activity, responsabil, details){
+  var now = new Date();
   db.ref('wms/history').push({
-    datetime:now.toISOString(),
-    dateDisplay:now.toLocaleDateString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric'}),
-    timeDisplay:now.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
-    uid,type,activity,responsabil,details
+    datetime:    now.toISOString(),
+    dateDisplay: now.toLocaleDateString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric'}),
+    timeDisplay: now.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    uid: uid, type: type, activity: activity, responsabil: responsabil, details: details
   });
 }
 
-/* ════ TABS ════ */
-function switchTab(tab,btn){
-  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');
+// Tabs
+function switchTab(tab, btn){
+  document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById('tab-' + tab).classList.add('active');
   btn.classList.add('active');
-  activeTab=tab;
-  if(tab==='istoric')   applyFilters();
-  if(tab==='dashboard') setTimeout(()=>document.getElementById('scanInput').focus(),50);
+  activeTab = tab;
+  if(tab === 'istoric') applyFilters();
+  if(tab === 'dashboard'){
+    setTimeout(function(){ document.getElementById('scanInput').focus(); }, 50);
+  }
 }
 
-/* ════ ASSIGN USER ════ */
+// Assign user
 function assignUser(){
-  const raw=document.getElementById('scanInput').value.trim();
-  const actIdx=document.getElementById('activitySelect').value;
-  if(!raw)        return showMsg('Introdu ID-ul userului!','error');
-  if(actIdx==='') return showMsg('Selectează o activitate!','error');
-  const idx=parseInt(actIdx), uid=raw.toUpperCase();
-  if(state[idx].find(u=>u.id===uid))
-    return showMsg(uid+' este deja la "'+ACTIVITIES[idx].name+'"!','error');
-  let prev=null;
-  const newState=state.map(arr=>[...arr]);
-  for(let i=0;i<newState.length;i++){
-    const b=newState[i].length;
-    newState[i]=newState[i].filter(u=>u.id!==uid);
-    if(newState[i].length<b) prev=ACTIVITIES[i].name;
+  var raw    = document.getElementById('scanInput').value.trim();
+  var actIdx = document.getElementById('activitySelect').value;
+  if(!raw)        return showMsg('Introdu ID-ul userului!', 'error');
+  if(actIdx === '') return showMsg('Selecteaza o activitate!', 'error');
+  var idx = parseInt(actIdx);
+  var uid = raw.toUpperCase();
+  if(state[idx].find(function(u){ return u.id === uid; }))
+    return showMsg(uid + ' este deja la "' + ACTIVITIES[idx].name + '"!', 'error');
+  var prev = null;
+  var newState = state.map(function(arr){ return arr.slice(); });
+  for(var i = 0; i < newState.length; i++){
+    var b = newState[i].length;
+    newState[i] = newState[i].filter(function(u){ return u.id !== uid; });
+    if(newState[i].length < b) prev = ACTIVITIES[i].name;
   }
-  const now=new Date();
-  newState[idx].push({id:uid,time:now.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})});
-  state=newState;
+  var now = new Date();
+  newState[idx].push({id: uid, time: now.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})});
+  state = newState;
   saveState();
-  const resp=responsabili[idx]||'—';
-  if(prev) addHistoryEntry(uid,'move',ACTIVITIES[idx].name,resp,'Mutat din "'+prev+'" → "'+ACTIVITIES[idx].name+'"');
-  else     addHistoryEntry(uid,'in',ACTIVITIES[idx].name,resp,'Asignat la "'+ACTIVITIES[idx].name+'"');
-  showMsg('✅ '+uid+' asignat la "'+ACTIVITIES[idx].name+'"','success');
-  document.getElementById('scanInput').value='';
+  var resp = responsabili[idx] || '-';
+  if(prev) addHistoryEntry(uid, 'move', ACTIVITIES[idx].name, resp, 'Mutat din "' + prev + '" la "' + ACTIVITIES[idx].name + '"');
+  else     addHistoryEntry(uid, 'in',   ACTIVITIES[idx].name, resp, 'Asignat la "' + ACTIVITIES[idx].name + '"');
+  showMsg('OK! ' + uid + ' asignat la "' + ACTIVITIES[idx].name + '"', 'success');
+  document.getElementById('scanInput').value = '';
   document.getElementById('scanInput').focus();
 }
 
-/* ════ REMOVE USER ════ */
-function removeUser(actIdx,uid){
-  state[actIdx]=state[actIdx].filter(u=>u.id!==uid);
+function removeUser(actIdx, uid){
+  state[actIdx] = state[actIdx].filter(function(u){ return u.id !== uid; });
   saveState();
-  addHistoryEntry(uid,'out',ACTIVITIES[actIdx].name,responsabili[actIdx]||'—',
-    'Eliminat din "'+ACTIVITIES[actIdx].name+'"');
+  addHistoryEntry(uid, 'out', ACTIVITIES[actIdx].name, responsabili[actIdx] || '-',
+    'Eliminat din "' + ACTIVITIES[actIdx].name + '"');
 }
 
-/* ════ RESPONSABIL ════ */
+// Responsabil
 function toggleEditResp(idx){
-  const row=document.getElementById('resp-edit-'+idx);
-  const inp=document.getElementById('resp-input-'+idx);
-  const open=row.classList.contains('show');
-  document.querySelectorAll('.resp-edit-row').forEach(r=>r.classList.remove('show'));
-  if(!open){ inp.value=responsabili[idx]||''; row.classList.add('show'); inp.focus(); }
-}
-function saveResp(idx){
-  const val=document.getElementById('resp-input-'+idx).value.trim();
-  const old=responsabili[idx]||'';
-  responsabili[idx]=val;
-  saveResponsabili();
-  document.getElementById('resp-edit-'+idx).classList.remove('show');
-  if(val!==old)
-    addHistoryEntry('—','resp',ACTIVITIES[idx].name,val,
-      old?'Responsabil schimbat: "'+old+'" → "'+(val||'Nealocat')+'"':'Responsabil setat: "'+val+'"');
-  showToast('✅ Responsabil salvat!','success');
-}
-function cancelResp(idx){
-  document.getElementById('resp-edit-'+idx).classList.remove('show');
+  var row = document.getElementById('resp-edit-' + idx);
+  var inp = document.getElementById('resp-inp-' + idx);
+  var isOpen = row.classList.contains('show');
+  document.querySelectorAll('.resp-edit').forEach(function(r){ r.classList.remove('show'); });
+  if(!isOpen){ inp.value = responsabili[idx] || ''; row.classList.add('show'); inp.focus(); }
 }
 
-/* ════ RENDER ════ */
+function saveResp(idx){
+  var val = document.getElementById('resp-inp-' + idx).value.trim();
+  var old = responsabili[idx] || '';
+  responsabili[idx] = val;
+  saveResponsabili();
+  document.getElementById('resp-edit-' + idx).classList.remove('show');
+  if(val !== old)
+    addHistoryEntry('-', 'resp', ACTIVITIES[idx].name, val,
+      old ? 'Responsabil schimbat: "' + old + '" la "' + (val || 'Nealocat') + '"'
+          : 'Responsabil setat: "' + val + '"');
+  showToast('Responsabil salvat!', 'success');
+}
+
+function cancelResp(idx){
+  document.getElementById('resp-edit-' + idx).classList.remove('show');
+}
+
+function respKeydown(e, idx){
+  if(e.key === 'Enter')  saveResp(idx);
+  if(e.key === 'Escape') cancelResp(idx);
+}
+
+// Render
 function renderStats(){
-  const total=state.reduce((s,a)=>s+a.length,0);
-  document.getElementById('statsBar').innerHTML=
-    '<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">Total Activi</div></div>'+
-    ACTIVITIES.map((a,i)=>
-      '<div class="stat-card"><div class="stat-num">'+state[i].length+'</div><div class="stat-label">'+a.emoji+' '+a.name+'</div></div>'
-    ).join('')+
-    '<div class="stat-card"><div class="stat-num">'+history.length+'</div><div class="stat-label">📋 Istoric</div></div>';
+  var total = state.reduce(function(s, a){ return s + a.length; }, 0);
+  var html = '<div class="stat-card"><div class="stat-num">' + total + '</div><div class="stat-label">Total Activi</div></div>';
+  ACTIVITIES.forEach(function(a, i){
+    html += '<div class="stat-card"><div class="stat-num">' + state[i].length + '</div><div class="stat-label">' + a.emoji + ' ' + a.name + '</div></div>';
+  });
+  html += '<div class="stat-card"><div class="stat-num">' + history.length + '</div><div class="stat-label">&#128203; Istoric</div></div>';
+  document.getElementById('statsBar').innerHTML = html;
 }
 
 function renderGrid(){
-  document.getElementById('activityGrid').innerHTML=ACTIVITIES.map((act,i)=>{
-    const resp=responsabili[i]||'';
-    return '<div class="activity-card">'+
-      '<div class="card-header '+act.color+'">'+
-        '<div class="card-icon">'+act.emoji+'</div>'+
-        '<div class="card-header-info">'+
-          '<div class="card-title">'+act.name+'</div>'+
-          '<div class="card-subtitle">'+state[i].length+' user'+(state[i].length!==1?'i':'')+' activ'+(state[i].length!==1?'i':'')+'</div>'+
-        '</div>'+
-        '<div class="badge">'+state[i].length+'</div>'+
-      '</div>'+
-      '<div class="'+act.color+'" style="padding-bottom:9px;">'+
-        '<div class="responsabil-strip">'+
-          '<span class="resp-label">👤 Resp.</span>'+
-          '<span class="resp-name '+(resp?'':'empty')+'">'+(resp||'Nealocat')+'</span>'+
-          '<button class="btn-edit-resp" onclick="toggleEditResp('+i+')" title="Editează">✏️</button>'+
-        '</div>'+
-        '<div class="resp-edit-row" id="resp-edit-'+i+'" style="margin:0 14px 0;">'+
-          '<input class="resp-input" id="resp-input-'+i+'" type="text" placeholder="Numele responsabilului..."'+
-            ' onkeydown="if(event.key==='Enter') saveResp('+i+'); if(event.key==='Escape') cancelResp('+i+')"/>'+
-          '<button class="btn-save-resp" onclick="saveResp('+i+')">✓</button>'+
-          '<button class="btn-cancel-resp" onclick="cancelResp('+i+')">✕</button>'+
-        '</div>'+
-      '</div>'+
-      '<div class="card-body">'+
-        '<div class="users-label">Useri asignați</div>'+
-        (state[i].length===0
-          ?'<div class="empty-state">Niciun user asignat</div>'
-          :state[i].map(u=>
-            '<div class="user-chip"><span>'+u.id+'</span><span class="chip-time">'+u.time+'</span>'+
-            '<button class="remove-btn" onclick="removeUser('+i+',''+u.id+'')">✕</button></div>'
-          ).join(''))+
-      '</div>'+
-    '</div>';
-  }).join('');
-}
-
-/* ════ EXPORT EXCEL ════ */
-function exportExcel(mode){
-  const wb=XLSX.utils.book_new();
-  const now=new Date();
-  const fn='Activitati_OVS_'+now.toISOString().slice(0,10)+'_'+now.toTimeString().slice(0,5).replace(':','-')+'.xlsx';
-
-  function setCols(ws,widths){ ws['!cols']=widths.map(w=>({wch:w})); }
-  function styleHdr(ws,cols){
-    for(let c=0;c<cols;c++){
-      const addr=XLSX.utils.encode_cell({r:0,c});
-      if(!ws[addr]) continue;
-      ws[addr].s={font:{bold:true,color:{rgb:'FFFFFF'},sz:11},
-        fill:{fgColor:{rgb:'1A237E'}},
-        alignment:{horizontal:'center',vertical:'center'}};
+  var html = '';
+  ACTIVITIES.forEach(function(act, i){
+    var resp = responsabili[i] || '';
+    html += '<div class="act-card">';
+    html += '<div class="card-hdr ' + act.color + '">';
+    html += '<div class="card-icon">' + act.emoji + '</div>';
+    html += '<div class="card-hdr-info"><div class="card-title">' + act.name + '</div>';
+    html += '<div class="card-sub">' + state[i].length + ' user' + (state[i].length !== 1 ? 'i' : '') + ' activ' + (state[i].length !== 1 ? 'i' : '') + '</div></div>';
+    html += '<div class="cbadge">' + state[i].length + '</div></div>';
+    html += '<div class="' + act.color + '" style="padding-bottom:9px;">';
+    html += '<div class="resp-strip">';
+    html += '<span class="resp-lbl">&#x1F464; Resp.</span>';
+    html += '<span class="resp-nm' + (resp ? '' : ' empty') + '">' + (resp || 'Nealocat') + '</span>';
+    html += '<button class="btn-edit-r" onclick="toggleEditResp(' + i + ')">&#9998;&#65039;</button></div>';
+    html += '<div class="resp-edit" id="resp-edit-' + i + '" style="margin:0 14px 0;">';
+    html += '<input class="resp-inp" id="resp-inp-' + i + '" type="text" placeholder="Numele responsabilului..." onkeydown="respKeydown(event,' + i + ')"/>';
+    html += '<button class="btn-sv-r" onclick="saveResp(' + i + ')">&#10003;</button>';
+    html += '<button class="btn-cn-r" onclick="cancelResp(' + i + ')">&#10005;</button></div></div>';
+    html += '<div class="card-body"><div class="users-lbl">Useri asignati</div>';
+    if(state[i].length === 0){
+      html += '<div class="empty-st">Niciun user asignat</div>';
+    } else {
+      state[i].forEach(function(u){
+        html += '<div class="uchip"><span>' + u.id + '</span><span class="chip-t">' + u.time + '</span>';
+        html += '<button class="rm-btn" onclick="removeUser(' + i + ','' + u.id + '')">&#10005;</button></div>';
+      });
     }
-  }
-
-  if(mode==='full'||mode==='stare'){
-    const rows=[['Activitate','Responsabil','User ID','Ora Asignare']];
-    ACTIVITIES.forEach((act,i)=>{
-      const resp=responsabili[i]||'Nealocat';
-      if(!state[i].length) rows.push([act.name,resp,'—','—']);
-      else state[i].forEach(u=>rows.push([act.name,resp,u.id,u.time]));
-    });
-    const ws=XLSX.utils.aoa_to_sheet(rows); setCols(ws,[30,25,20,15]); styleHdr(ws,4);
-    XLSX.utils.book_append_sheet(wb,ws,'Stare Curenta');
-
-    const rows2=[['Nr.','Activitate','Responsabil','Useri Activi']];
-    ACTIVITIES.forEach((a,i)=>rows2.push([i+1,a.name,responsabili[i]||'Nealocat',state[i].length]));
-    const ws2=XLSX.utils.aoa_to_sheet(rows2); setCols(ws2,[5,32,25,15]); styleHdr(ws2,4);
-    XLSX.utils.book_append_sheet(wb,ws2,'Responsabili');
-  }
-
-  if(mode==='full'||mode==='istoric'||mode==='filtrat'){
-    const data=(mode==='filtrat'&&filtered.length)?filtered:history;
-    const tl={in:'IN',out:'OUT',move:'MUTAT',resp:'RESPONSABIL'};
-    const rows=[['Data','Ora','User ID','Actiune','Activitate','Responsabil','Detalii']];
-    data.forEach(r=>rows.push([r.dateDisplay,r.timeDisplay,r.uid,tl[r.type]||r.type,r.activity,r.responsabil||'—',r.details]));
-    const ws=XLSX.utils.aoa_to_sheet(rows); setCols(ws,[12,10,15,12,32,25,45]); styleHdr(ws,7);
-    XLSX.utils.book_append_sheet(wb,ws,'Istoric');
-  }
-
-  if(mode==='full'){
-    const rows=[['Activitate','Responsabil','Useri Activi','Total IN','Total OUT','Total Mutări']];
-    ACTIVITIES.forEach((a,i)=>{
-      const ah=history.filter(r=>r.activity===a.name);
-      rows.push([a.name,responsabili[i]||'Nealocat',state[i].length,
-        ah.filter(r=>r.type==='in').length,ah.filter(r=>r.type==='out').length,ah.filter(r=>r.type==='move').length]);
-    });
-    const ws=XLSX.utils.aoa_to_sheet(rows); setCols(ws,[30,25,14,12,12,14]); styleHdr(ws,6);
-    XLSX.utils.book_append_sheet(wb,ws,'Sumar');
-  }
-
-  if(!wb.SheetNames.length){showToast('Nu există date de exportat.','error');return;}
-  XLSX.writeFile(wb,fn);
-  showToast('✅ Excel salvat: '+fn,'success');
+    html += '</div></div>';
+  });
+  document.getElementById('activityGrid').innerHTML = html;
 }
 
-/* ════ EXPORT CSV ════ */
+// Excel export
+function exportExcel(mode){
+  var wb = XLSX.utils.book_new();
+  var now = new Date();
+  var fn = 'Activitati_OVS_' + now.toISOString().slice(0,10) + '.xlsx';
+
+  function setCols(ws, widths){ ws['!cols'] = widths.map(function(w){ return {wch:w}; }); }
+
+  if(mode === 'full' || mode === 'stare'){
+    var rows = [['Activitate','Responsabil','User ID','Ora Asignare']];
+    ACTIVITIES.forEach(function(act, i){
+      var resp = responsabili[i] || 'Nealocat';
+      if(!state[i].length){ rows.push([act.name, resp, '-', '-']); }
+      else state[i].forEach(function(u){ rows.push([act.name, resp, u.id, u.time]); });
+    });
+    var ws = XLSX.utils.aoa_to_sheet(rows); setCols(ws,[30,25,20,15]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Stare Curenta');
+
+    var rows2 = [['Nr.','Activitate','Responsabil','Useri Activi']];
+    ACTIVITIES.forEach(function(a, i){ rows2.push([i+1, a.name, responsabili[i]||'Nealocat', state[i].length]); });
+    var ws2 = XLSX.utils.aoa_to_sheet(rows2); setCols(ws2,[5,32,25,15]);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Responsabili');
+  }
+
+  if(mode === 'full' || mode === 'istoric' || mode === 'filtrat'){
+    var data = (mode === 'filtrat' && filtered.length) ? filtered : history;
+    var tl = {in:'IN', out:'OUT', move:'MUTAT', resp:'RESPONSABIL'};
+    var rows3 = [['Data','Ora','User ID','Actiune','Activitate','Responsabil','Detalii']];
+    data.forEach(function(r){
+      rows3.push([r.dateDisplay, r.timeDisplay, r.uid, tl[r.type]||r.type, r.activity, r.responsabil||'-', r.details]);
+    });
+    var ws3 = XLSX.utils.aoa_to_sheet(rows3); setCols(ws3,[12,10,15,12,32,25,45]);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Istoric');
+  }
+
+  if(mode === 'full'){
+    var rows4 = [['Activitate','Responsabil','Useri Activi','Total IN','Total OUT','Total Mutari']];
+    ACTIVITIES.forEach(function(a, i){
+      var ah = history.filter(function(r){ return r.activity === a.name; });
+      rows4.push([a.name, responsabili[i]||'Nealocat', state[i].length,
+        ah.filter(function(r){ return r.type==='in'; }).length,
+        ah.filter(function(r){ return r.type==='out'; }).length,
+        ah.filter(function(r){ return r.type==='move'; }).length]);
+    });
+    var ws4 = XLSX.utils.aoa_to_sheet(rows4); setCols(ws4,[30,25,14,12,12,14]);
+    XLSX.utils.book_append_sheet(wb, ws4, 'Sumar');
+  }
+
+  if(!wb.SheetNames.length){ showToast('Nu exista date de exportat.', 'error'); return; }
+  XLSX.writeFile(wb, fn);
+  showToast('Excel salvat: ' + fn, 'success');
+}
+
 function exportCSV(){
-  const data=filtered.length?filtered:history;
-  if(!data.length){showToast('Nu există date.','error');return;}
-  const csv=[['Data','Ora','User ID','Actiune','Activitate','Responsabil','Detalii'],
-    ...data.map(r=>[r.dateDisplay,r.timeDisplay,r.uid,
+  var data = filtered.length ? filtered : history;
+  if(!data.length){ showToast('Nu exista date.', 'error'); return; }
+  var rows = [['Data','Ora','User ID','Actiune','Activitate','Responsabil','Detalii']];
+  data.forEach(function(r){
+    rows.push([r.dateDisplay, r.timeDisplay, r.uid,
       r.type==='in'?'IN':r.type==='out'?'OUT':r.type==='move'?'MUTAT':'RESPONSABIL',
-      r.activity,r.responsabil||'—',r.details])
-  ].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
-  a.download='Istoric_OVS_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+      r.activity, r.responsabil||'-', r.details]);
+  });
+  var csv = rows.map(function(r){
+    return r.map(function(c){ return '"' + String(c).replace(/"/g,'""') + '"'; }).join(',');
+  }).join('
+');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = 'Istoric_OVS_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
 }
 
-/* ════ EXPORT JSON BACKUP ════ */
 function exportJSONBackup(){
-  const now=new Date();
-  const payload={version:4,exportedAt:now.toISOString(),source:'Firebase',
-    includes:{state:true,responsabili:true,history:true},
-    state,responsabili,history};
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
-  a.download='Backup_OVS_'+now.toISOString().slice(0,10)+'.json'; a.click();
-  showToast('✅ Backup JSON salvat!','success');
+  var now = new Date();
+  var payload = {version:4, exportedAt:now.toISOString(), source:'Firebase',
+    includes:{state:true, responsabili:true, history:true},
+    state:state, responsabili:responsabili, history:history};
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'}));
+  a.download = 'Backup_OVS_' + now.toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('Backup JSON salvat!', 'success');
 }
 
-/* ════ RESET ════ */
 function resetState(){
-  if(!confirm('Resetezi starea curentă pe TOATE laptopurile? Istoricul rămâne intact.')) return;
+  if(!confirm('Resetezi starea curenta pe TOATE laptopurile?')) return;
   db.ref('wms/state').set(null);
-  showToast('👥 Stare resetată pe toate dispozitivele.','info');
+  showToast('Stare resetata pe toate dispozitivele.', 'info');
 }
 function resetAll(){
-  if(!confirm('⚠️ Ștergi TOT din baza de date? Afectează TOȚI utilizatorii!')) return;
+  if(!confirm('Stergi TOT din baza de date? Afecteaza TOTI utilizatorii!')) return;
   db.ref('wms').set(null);
-  showToast('💣 Toate datele au fost șterse.','error');
+  showToast('Toate datele au fost sterse.', 'error');
 }
 
-/* ════ FILTERS ════ */
+// Filters
 function applyFilters(){
-  const fUser=document.getElementById('f-user').value.trim().toUpperCase();
-  const fResp=document.getElementById('f-resp').value.trim().toLowerCase();
-  const fAct =document.getElementById('f-activity').value;
-  const fType=document.getElementById('f-type').value;
-  const fFrom=document.getElementById('f-date-from').value;
-  const fTo  =document.getElementById('f-date-to').value;
-  filtered=history.filter(r=>{
-    if(fUser&&!r.uid.includes(fUser))                            return false;
-    if(fResp&&!(r.responsabil||'').toLowerCase().includes(fResp))return false;
-    if(fAct&&r.activity!==fAct)                                  return false;
-    if(fType&&r.type!==fType)                                    return false;
-    const d=new Date(r.datetime);
-    if(fFrom&&d<new Date(fFrom))                                 return false;
-    if(fTo&&d>new Date(fTo+'T23:59:59'))                         return false;
+  var fUser = document.getElementById('f-user').value.trim().toUpperCase();
+  var fResp = document.getElementById('f-resp').value.trim().toLowerCase();
+  var fAct  = document.getElementById('f-activity').value;
+  var fType = document.getElementById('f-type').value;
+  var fFrom = document.getElementById('f-date-from').value;
+  var fTo   = document.getElementById('f-date-to').value;
+  filtered = history.filter(function(r){
+    if(fUser && r.uid.indexOf(fUser) === -1) return false;
+    if(fResp && (r.responsabil||'').toLowerCase().indexOf(fResp) === -1) return false;
+    if(fAct  && r.activity !== fAct) return false;
+    if(fType && r.type !== fType) return false;
+    var d = new Date(r.datetime);
+    if(fFrom && d < new Date(fFrom)) return false;
+    if(fTo   && d > new Date(fTo + 'T23:59:59')) return false;
     return true;
   });
-  sortTable(sortCol,true); curPage=1; renderHistSummary(); renderHistTable();
+  sortTable(sortCol, true);
+  curPage = 1;
+  renderHistSummary();
+  renderHistTable();
 }
 function resetFilters(){
-  ['f-user','f-resp','f-date-from','f-date-to'].forEach(id=>document.getElementById(id).value='');
-  ['f-activity','f-type'].forEach(id=>document.getElementById(id).value='');
+  ['f-user','f-resp','f-date-from','f-date-to'].forEach(function(id){ document.getElementById(id).value = ''; });
+  ['f-activity','f-type'].forEach(function(id){ document.getElementById(id).value = ''; });
   applyFilters();
 }
 
-/* ════ SORT ════ */
-function sortTable(col,keepDir=false){
-  if(!keepDir){ if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=-1;} }
-  document.querySelectorAll('.hist-table thead th').forEach(th=>th.classList.remove('sorted'));
-  const th=document.getElementById('th-'+col); if(th) th.classList.add('sorted');
-  filtered.sort((a,b)=>{
-    let va=a[col]||'',vb=b[col]||'';
-    if(col==='datetime'){va=new Date(va);vb=new Date(vb);}
-    return va<vb?sortDir:va>vb?-sortDir:0;
+function sortTable(col, keepDir){
+  if(!keepDir){
+    if(sortCol === col) sortDir *= -1;
+    else { sortCol = col; sortDir = -1; }
+  }
+  document.querySelectorAll('.htbl thead th').forEach(function(th){ th.classList.remove('sorted'); });
+  var th = document.getElementById('th-' + col);
+  if(th) th.classList.add('sorted');
+  filtered.sort(function(a, b){
+    var va = a[col] || '', vb = b[col] || '';
+    if(col === 'datetime'){ va = new Date(va); vb = new Date(vb); }
+    return va < vb ? sortDir : va > vb ? -sortDir : 0;
   });
   renderHistTable();
 }
 
-/* ════ RENDER ISTORIC ════ */
 function renderHistSummary(){
-  const ins  =filtered.filter(r=>r.type==='in').length;
-  const outs =filtered.filter(r=>r.type==='out').length;
-  const moves=filtered.filter(r=>r.type==='move').length;
-  const resps=filtered.filter(r=>r.type==='resp').length;
-  const users=[...new Set(filtered.map(r=>r.uid).filter(u=>u!=='—'))].length;
-  document.getElementById('histSummary').innerHTML=
-    '<div class="hist-stat">Total: <strong>'+filtered.length+'</strong></div>'+
-    '<div class="hist-stat">Useri unici: <strong>'+users+'</strong></div>'+
-    '<div class="hist-stat" style="color:#2e7d32">✅ IN: <strong>'+ins+'</strong></div>'+
-    '<div class="hist-stat" style="color:#c62828">❌ OUT: <strong>'+outs+'</strong></div>'+
-    '<div class="hist-stat" style="color:#f57f17">🔄 Mutări: <strong>'+moves+'</strong></div>'+
-    '<div class="hist-stat" style="color:#1a237e">👤 Resp.: <strong>'+resps+'</strong></div>';
+  var ins   = filtered.filter(function(r){ return r.type==='in'; }).length;
+  var outs  = filtered.filter(function(r){ return r.type==='out'; }).length;
+  var moves = filtered.filter(function(r){ return r.type==='move'; }).length;
+  var resps = filtered.filter(function(r){ return r.type==='resp'; }).length;
+  var uids  = {};
+  filtered.forEach(function(r){ if(r.uid !== '-') uids[r.uid] = 1; });
+  var users = Object.keys(uids).length;
+  document.getElementById('histSummary').innerHTML =
+    '<div class="hs">Total: <strong>' + filtered.length + '</strong></div>' +
+    '<div class="hs">Useri unici: <strong>' + users + '</strong></div>' +
+    '<div class="hs" style="color:#2e7d32">IN: <strong>' + ins + '</strong></div>' +
+    '<div class="hs" style="color:#c62828">OUT: <strong>' + outs + '</strong></div>' +
+    '<div class="hs" style="color:#f57f17">Mutari: <strong>' + moves + '</strong></div>' +
+    '<div class="hs" style="color:#1a237e">Resp.: <strong>' + resps + '</strong></div>';
 }
 
 function renderHistTable(){
-  const totalPages=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
-  if(curPage>totalPages) curPage=totalPages;
-  const rows=filtered.slice((curPage-1)*PAGE_SIZE,curPage*PAGE_SIZE);
-  document.getElementById('pageInfo').textContent=filtered.length+' înreg. | Pag. '+curPage+'/'+totalPages;
-  const tbody=document.getElementById('histBody');
+  var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if(curPage > totalPages) curPage = totalPages;
+  var rows = filtered.slice((curPage - 1) * PAGE_SIZE, curPage * PAGE_SIZE);
+  document.getElementById('pageInfo').textContent = filtered.length + ' inreg. | Pag. ' + curPage + '/' + totalPages;
+  var tbody = document.getElementById('histBody');
   if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="6" class="no-data">📭 Nu există înregistrări.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="nodata">Nu exista inregistrari.</td></tr>';
   } else {
-    tbody.innerHTML=rows.map(r=>{
-      const act=ACTIVITIES.find(a=>a.name===r.activity)||{bg:'#f0f2f8',tc:'#555',emoji:'📌'};
-      const badge=r.type==='in'?'<span class="badge-in">IN</span>':
-        r.type==='out'?'<span class="badge-out">OUT</span>':
-        r.type==='move'?'<span class="badge-move">MUTAT</span>':
-        '<span class="badge-resp">👤 RESP.</span>';
-      return '<tr>'+
-        '<td class="td-date"><div>'+r.dateDisplay+'</div><div style="color:#aaa;font-size:.67rem;">'+r.timeDisplay+'</div></td>'+
-        '<td class="td-user">'+r.uid+'</td><td>'+badge+'</td>'+
-        '<td class="td-act"><span style="background:'+act.bg+';color:'+act.tc+'">'+act.emoji+' '+r.activity+'</span></td>'+
-        '<td style="font-weight:600;font-size:.8rem;">'+(r.responsabil||'—')+'</td>'+
-        '<td style="color:var(--muted);font-size:.78rem;">'+r.details+'</td>'+
-      '</tr>';
-    }).join('');
+    var html = '';
+    rows.forEach(function(r){
+      var act = ACTIVITIES.find(function(a){ return a.name === r.activity; }) || {bg:'#f0f2f8',tc:'#555',emoji:'&#128204;'};
+      var badge = r.type==='in'  ? '<span class="bin">IN</span>' :
+                  r.type==='out' ? '<span class="bout">OUT</span>' :
+                  r.type==='move'? '<span class="bmove">MUTAT</span>' :
+                                   '<span class="bresp">RESP.</span>';
+      html += '<tr>';
+      html += '<td class="tdd"><div>' + r.dateDisplay + '</div><div style="color:#aaa;font-size:.67rem;">' + r.timeDisplay + '</div></td>';
+      html += '<td class="tdu">' + r.uid + '</td>';
+      html += '<td>' + badge + '</td>';
+      html += '<td class="tda"><span style="background:' + act.bg + ';color:' + act.tc + '">' + act.emoji + ' ' + r.activity + '</span></td>';
+      html += '<td style="font-weight:600;font-size:.8rem;">' + (r.responsabil || '-') + '</td>';
+      html += '<td style="color:var(--muted);font-size:.78rem;">' + r.details + '</td>';
+      html += '</tr>';
+    });
+    tbody.innerHTML = html;
   }
   renderPagination(totalPages);
 }
 
 function renderPagination(totalPages){
-  const el=document.getElementById('pagination');
-  if(totalPages<=1){el.innerHTML='';return;}
-  let html='<button class="pg-btn" onclick="goPage('+(curPage-1)+')" '+(curPage===1?'disabled':'')+'>‹</button>';
-  let s=Math.max(1,curPage-2),e=Math.min(totalPages,curPage+2);
-  if(s>1) html+='<button class="pg-btn" onclick="goPage(1)">1</button>'+(s>2?'<span style="padding:0 4px">…</span>':'');
-  for(let i=s;i<=e;i++) html+='<button class="pg-btn '+(i===curPage?'active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
-  if(e<totalPages) html+=(e<totalPages-1?'<span style="padding:0 4px">…</span>':'')+'<button class="pg-btn" onclick="goPage('+totalPages+')">'+totalPages+'</button>';
-  html+='<button class="pg-btn" onclick="goPage('+(curPage+1)+')" '+(curPage===totalPages?'disabled':'')+'>›</button>';
-  el.innerHTML=html;
+  var el = document.getElementById('pagination');
+  if(totalPages <= 1){ el.innerHTML = ''; return; }
+  var html = '<button class="pgb" onclick="goPage(' + (curPage-1) + ')" ' + (curPage===1?'disabled':'') + '>&#8249;</button>';
+  var s = Math.max(1, curPage-2), e = Math.min(totalPages, curPage+2);
+  if(s > 1) html += '<button class="pgb" onclick="goPage(1)">1</button>' + (s>2?'<span style="padding:0 4px">&#8230;</span>':'');
+  for(var i = s; i <= e; i++) html += '<button class="pgb ' + (i===curPage?'active':'') + '" onclick="goPage(' + i + ')">' + i + '</button>';
+  if(e < totalPages) html += (e<totalPages-1?'<span style="padding:0 4px">&#8230;</span>':'') + '<button class="pgb" onclick="goPage(' + totalPages + ')">' + totalPages + '</button>';
+  html += '<button class="pgb" onclick="goPage(' + (curPage+1) + ')" ' + (curPage===totalPages?'disabled':'') + '>&#8250;</button>';
+  el.innerHTML = html;
 }
-function goPage(p){curPage=p;renderHistTable();}
+function goPage(p){ curPage = p; renderHistTable(); }
 
 function confirmClearHistory(){
-  if(confirm('⚠️ Ștergi ÎNTREGUL istoric din Firebase? Afectează toți utilizatorii!')){
-    db.ref('wms/history').set(null);
-    history=[]; filtered=[];
-    renderHistSummary(); renderHistTable(); renderStats();
-    showToast('🗑 Istoric șters.','info');
-  }
+  if(!confirm('Stergi INTREGUL istoric din Firebase?')) return;
+  db.ref('wms/history').set(null);
+  history = []; filtered = [];
+  renderHistSummary(); renderHistTable(); renderStats();
+  showToast('Istoric sters.', 'info');
 }
 
-/* ════ MSG & TOAST ════ */
-function showMsg(text,type){
-  const el=document.getElementById('msgBox');
-  el.textContent=text; el.className='msg '+type; el.style.display='block';
-  setTimeout(()=>el.style.display='none',3000);
+function showMsg(text, type){
+  var el = document.getElementById('msgBox');
+  el.textContent = text; el.className = 'msg ' + type; el.style.display = 'block';
+  setTimeout(function(){ el.style.display = 'none'; }, 3000);
 }
-let toastTimer=null;
-function showToast(text,type){
-  const el=document.getElementById('toast');
-  el.textContent=text; el.className='toast '+type+' show';
+var toastTimer = null;
+function showToast(text, type){
+  var el = document.getElementById('toast');
+  el.textContent = text; el.className = 'toast ' + type + ' show';
   clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>el.classList.remove('show'),3500);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3500);
 }
 
-/* ════ INIT ════ */
 renderStats(); renderGrid();
-// Safety: hide loading after 8 seconds even if Firebase doesn't respond
-setTimeout(()=>hideLoading(), 8000);
 </script>
 </body>
 </html>
