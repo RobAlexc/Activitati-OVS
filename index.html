@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistem Scanare Activități</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary:#1a237e; --primary-light:#3949ab;
+      --danger:#e53935;  --bg:#f0f2f8;
+      --card:#ffffff;    --text:#1a1a2e;
+      --muted:#6b7280;   --border:#e0e0e0;
+      --shadow:0 4px 20px rgba(26,35,126,0.10);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+    header{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;
+      padding:14px 20px;display:flex;align-items:center;justify-content:space-between;
+      box-shadow:0 2px 12px rgba(26,35,126,.25);position:sticky;top:0;z-index:200;}
+    .logo{display:flex;align-items:center;gap:10px;}
+    .logo svg{width:32px;height:32px;}
+    header h1{font-size:1.1rem;font-weight:700;}
+    .clock{font-size:.95rem;font-weight:600;background:rgba(255,255,255,.15);
+      padding:5px 14px;border-radius:20px;letter-spacing:1px;}
+
+    .tabs{max-width:1400px;margin:16px auto 0;padding:0 14px;display:flex;gap:5px;flex-wrap:wrap;}
+    .tab-btn{padding:9px 20px;border:none;border-radius:10px 10px 0 0;font-size:.9rem;font-weight:600;
+      cursor:pointer;background:#dde1f0;color:var(--primary);transition:all .2s;}
+    .tab-btn.active{background:var(--card);box-shadow:0 -2px 8px rgba(26,35,126,.1);}
+    .tab-btn:hover:not(.active){background:#cdd1e8;}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+    .main-wrap{max-width:1400px;margin:0 auto;padding:14px;}
+
+    .scan-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:16px;}
+    .panel-title{font-size:.8rem;font-weight:700;color:var(--primary);
+      text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;}
+    .scan-row{display:flex;gap:10px;}
+    .scan-input{flex:1;padding:13px 16px;font-size:1rem;border:2px solid var(--border);
+      border-radius:10px;outline:none;transition:border .2s;}
+    .scan-input:focus{border-color:var(--primary-light);}
+    .scan-btn{padding:13px 24px;font-size:.95rem;font-weight:700;background:var(--primary);color:#fff;
+      border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .1s;
+      display:flex;align-items:center;gap:8px;white-space:nowrap;}
+    .scan-btn:hover{background:var(--primary-light);}
+    .scan-btn:active{transform:scale(.97);}
+    .activity-select{width:100%;margin-top:12px;padding:12px 14px;font-size:1rem;
+      border:2px solid var(--border);border-radius:10px;background:#fff;outline:none;cursor:pointer;}
+    .activity-select:focus{border-color:var(--primary-light);}
+    .msg{margin-top:10px;padding:10px 14px;border-radius:8px;font-weight:600;font-size:.9rem;display:none;}
+    .msg.success{background:#e8f5e9;color:#2e7d32;}
+    .msg.error{background:#ffebee;color:#c62828;}
+
+    .stats-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+    .stat-card{flex:1;min-width:100px;background:var(--card);border-radius:12px;
+      padding:11px 14px;box-shadow:var(--shadow);text-align:center;}
+    .stat-num{font-size:1.7rem;font-weight:800;color:var(--primary);}
+    .stat-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;
+      letter-spacing:.4px;margin-top:2px;line-height:1.3;}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+    .activity-card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);
+      overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;}
+    .activity-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(26,35,126,.15);}
+    .card-header{padding:13px 16px 10px;display:flex;align-items:flex-start;gap:10px;}
+    .card-icon{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.2);
+      display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;margin-top:2px;}
+    .card-header-info{flex:1;min-width:0;}
+    .card-title{font-size:.9rem;font-weight:700;color:#fff;}
+    .card-subtitle{font-size:.72rem;color:rgba(255,255,255,.75);margin-top:1px;}
+    .badge{background:rgba(255,255,255,.25);color:#fff;font-weight:800;font-size:.85rem;
+      padding:4px 10px;border-radius:16px;min-width:30px;text-align:center;flex-shrink:0;margin-top:2px;}
+    .responsabil-strip{margin:0 16px;padding:8px 12px;background:rgba(255,255,255,0.18);
+      border-radius:8px;display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+    .resp-label{font-size:.7rem;color:rgba(255,255,255,.8);font-weight:600;
+      text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+    .resp-name{font-size:.88rem;font-weight:700;color:#fff;flex:1;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .resp-name.empty{color:rgba(255,255,255,.5);font-weight:400;font-style:italic;}
+    .btn-edit-resp{background:rgba(255,255,255,.25);border:none;color:#fff;width:26px;height:26px;
+      border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;
+      justify-content:center;font-size:.8rem;transition:background .15s;}
+    .btn-edit-resp:hover{background:rgba(255,255,255,.4);}
+    .resp-edit-row{display:none;margin:0 16px 10px;gap:6px;}
+    .resp-edit-row.show{display:flex;}
+    .resp-input{flex:1;padding:7px 10px;font-size:.88rem;border:2px solid rgba(255,255,255,.5);
+      border-radius:8px;background:rgba(255,255,255,.15);color:#fff;outline:none;font-weight:600;}
+    .resp-input::placeholder{color:rgba(255,255,255,.5);}
+    .resp-input:focus{border-color:rgba(255,255,255,.85);background:rgba(255,255,255,.22);}
+    .btn-save-resp{padding:7px 14px;background:rgba(255,255,255,.9);color:var(--primary);
+      border:none;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer;white-space:nowrap;}
+    .btn-save-resp:hover{background:#fff;}
+    .btn-cancel-resp{padding:7px 10px;background:rgba(255,255,255,.2);color:#fff;
+      border:none;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer;}
+    .btn-cancel-resp:hover{background:rgba(255,255,255,.3);}
+    .card-body{padding:12px 16px;flex:1;}
+    .users-label{font-size:.72rem;font-weight:700;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+    .user-chip{display:inline-flex;align-items:center;gap:6px;background:#f0f2f8;
+      border:1.5px solid #dde1f0;border-radius:18px;padding:4px 8px 4px 12px;
+      margin:3px;font-size:.83rem;font-weight:600;}
+    .chip-time{font-size:.68rem;color:var(--muted);font-weight:400;}
+    .remove-btn{background:#ffebee;color:#c62828;border:none;border-radius:50%;
+      width:19px;height:19px;cursor:pointer;font-weight:800;font-size:.78rem;
+      display:flex;align-items:center;justify-content:center;}
+    .remove-btn:hover{background:var(--danger);color:#fff;}
+    .empty-state{color:var(--muted);font-size:.82rem;text-align:center;padding:14px 0;font-style:italic;}
+
+    .c0{background:linear-gradient(135deg,#1565c0,#1e88e5);}
+    .c1{background:linear-gradient(135deg,#6a1b9a,#8e24aa);}
+    .c2{background:linear-gradient(135deg,#00695c,#00897b);}
+    .c3{background:linear-gradient(135deg,#e65100,#fb8c00);}
+    .c4{background:linear-gradient(135deg,#880e4f,#d81b60);}
+    .c5{background:linear-gradient(135deg,#1a237e,#283593);}
+    .c6{background:linear-gradient(135deg,#004d40,#00796b);}
+    .c7{background:linear-gradient(135deg,#4a148c,#7b1fa2);}
+
+    /* TRANSFER */
+    .transfer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;margin-bottom:24px;}
+    .transfer-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;}
+    .transfer-card-header{padding:14px 20px;display:flex;align-items:center;gap:12px;color:#fff;}
+    .transfer-card-header .t-icon{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.2);
+      display:flex;align-items:center;justify-content:center;font-size:1.4rem;}
+    .transfer-card-header h3{font-size:1rem;font-weight:700;}
+    .transfer-card-header p{font-size:.75rem;opacity:.8;margin-top:2px;}
+    .transfer-card-body{padding:20px;}
+    .th-export{background:linear-gradient(135deg,#1565c0,#1e88e5);}
+    .th-import{background:linear-gradient(135deg,#1b5e20,#2e7d32);}
+    .th-reset{background:linear-gradient(135deg,#b71c1c,#e53935);}
+    .th-info{background:linear-gradient(135deg,#37474f,#546e7a);}
+    .export-options{display:flex;flex-direction:column;gap:10px;}
+    .export-btn{width:100%;padding:12px 16px;border:none;border-radius:10px;font-size:.92rem;
+      font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .2s;}
+    .export-btn-full{background:#e3f2fd;color:#1565c0;border:2px solid #90caf9;}
+    .export-btn-full:hover{background:#bbdefb;}
+    .export-btn-hist{background:#e8f5e9;color:#1b5e20;border:2px solid #a5d6a7;}
+    .export-btn-hist:hover{background:#c8e6c9;}
+    .export-btn-state{background:#fff3e0;color:#e65100;border:2px solid #ffcc80;}
+    .export-btn-state:hover{background:#ffe0b2;}
+    .export-btn-csv{background:#f3e5f5;color:#6a1b9a;border:2px solid #ce93d8;}
+    .export-btn-csv:hover{background:#e1bee7;}
+    .export-btn-excel{background:#e8f5e9;color:#1b5e20;border:2px solid #81c784;}
+    .export-btn-excel:hover{background:#c8e6c9;}
+    .export-divider{border:none;border-top:1px solid var(--border);margin:4px 0;}
+
+    .import-zone{border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;
+      cursor:pointer;transition:all .2s;background:#fafafa;}
+    .import-zone:hover,.import-zone.drag-over{border-color:var(--primary-light);background:#eef0fa;}
+    .import-zone .iz-icon{font-size:2.5rem;margin-bottom:8px;}
+    .import-zone p{color:var(--muted);font-size:.88rem;}
+    .import-zone strong{color:var(--primary);}
+    #importFileInput{display:none;}
+    .import-options{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+    .imp-opt{flex:1;min-width:120px;padding:10px;border:2px solid var(--border);border-radius:8px;
+      background:#fff;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);
+      text-align:center;transition:all .2s;}
+    .imp-opt.selected{background:var(--primary);color:#fff;border-color:var(--primary);}
+    .imp-opt:hover:not(.selected){background:#eef0fa;}
+    .import-btn{width:100%;margin-top:12px;padding:12px;border:none;border-radius:10px;
+      background:var(--primary);color:#fff;font-size:.95rem;font-weight:700;cursor:pointer;}
+    .import-btn:hover{background:var(--primary-light);}
+    .import-btn:disabled{opacity:.4;cursor:not-allowed;}
+    .import-preview{margin-top:12px;padding:12px;border-radius:8px;
+      background:#f8f9fc;border:1.5px solid var(--border);display:none;font-size:.85rem;}
+    .import-preview.show{display:block;}
+    .info-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
+    .info-list li{display:flex;align-items:flex-start;gap:10px;font-size:.88rem;
+      padding:8px 12px;background:#f8f9fc;border-radius:8px;border-left:3px solid var(--primary);}
+    .info-list li .info-icon{font-size:1.1rem;flex-shrink:0;}
+    .reset-warning{background:#ffebee;border:2px solid #ef9a9a;border-radius:10px;
+      padding:16px;margin-bottom:16px;color:#b71c1c;font-size:.88rem;}
+    .reset-warning strong{display:block;font-size:1rem;margin-bottom:4px;}
+    .reset-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+    .btn-reset-state{padding:11px 20px;background:#ff6f00;color:#fff;border:none;border-radius:9px;
+      font-weight:700;cursor:pointer;font-size:.88rem;}
+    .btn-reset-state:hover{background:#e65100;}
+    .btn-reset-all{padding:11px 20px;background:#b71c1c;color:#fff;border:none;border-radius:9px;
+      font-weight:700;cursor:pointer;font-size:.88rem;}
+    .btn-reset-all:hover{background:var(--danger);}
+    .backup-history{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+    .bh-header{background:linear-gradient(135deg,#37474f,#546e7a);color:#fff;padding:13px 18px;
+      display:flex;align-items:center;justify-content:space-between;}
+    .bh-header span{font-weight:700;}
+    .bh-body{max-height:200px;overflow-y:auto;}
+    .bh-row{display:flex;align-items:center;gap:12px;padding:10px 18px;
+      border-bottom:1px solid var(--border);font-size:.85rem;flex-wrap:wrap;}
+    .bh-row:last-child{border-bottom:none;}
+    .bh-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#1565c0;}
+    .bh-time{color:var(--muted);font-size:.76rem;min-width:120px;}
+    .bh-msg{flex:1;}
+    .bh-empty{padding:20px;text-align:center;color:var(--muted);font-style:italic;font-size:.88rem;}
+
+    /* ISTORIC */
+    .filter-bar{background:var(--card);border-radius:14px;box-shadow:var(--shadow);
+      padding:16px 18px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+    .filter-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px;}
+    .filter-group label{font-size:.72rem;font-weight:700;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.5px;}
+    .filter-input,.filter-select{padding:8px 11px;border:2px solid var(--border);
+      border-radius:8px;font-size:.88rem;outline:none;background:#fff;transition:border .2s;}
+    .filter-input:focus,.filter-select:focus{border-color:var(--primary-light);}
+    .filter-actions{display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap;}
+    .btn-filter{padding:9px 15px;border:none;border-radius:8px;cursor:pointer;
+      font-size:.85rem;font-weight:700;transition:all .15s;white-space:nowrap;}
+    .btn-apply{background:var(--primary);color:#fff;} .btn-apply:hover{background:var(--primary-light);}
+    .btn-reset2{background:#f0f2f8;color:var(--primary);border:2px solid var(--border);} .btn-reset2:hover{background:#dde1f0;}
+    .btn-export-csv{background:#6a1b9a;color:#fff;} .btn-export-csv:hover{background:#7b1fa2;}
+    .btn-export-xls{background:#1b5e20;color:#fff;} .btn-export-xls:hover{background:#2e7d32;}
+    .btn-clear-hist{background:#b71c1c;color:#fff;} .btn-clear-hist:hover{background:var(--danger);}
+    .hist-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+    .hist-stat{background:var(--card);border-radius:10px;padding:9px 16px;
+      box-shadow:var(--shadow);font-size:.82rem;display:flex;align-items:center;gap:7px;}
+    .hist-stat strong{font-size:1.05rem;color:var(--primary);}
+    .table-wrap{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+    .table-header-bar{background:linear-gradient(135deg,#37474f,#546e7a);color:#fff;
+      padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
+    .table-header-bar span{font-weight:700;font-size:.9rem;}
+    .page-info{font-size:.78rem;background:rgba(255,255,255,.18);padding:4px 10px;border-radius:7px;}
+    .hist-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+    .hist-table thead th{background:#f8f9fc;color:var(--primary);padding:10px 12px;
+      text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;
+      border-bottom:2px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+    .hist-table thead th:hover{background:#eef0fa;}
+    .hist-table thead th.sorted{color:var(--primary-light);}
+    .hist-table tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
+    .hist-table tbody tr:hover{background:#f8f9fc;}
+    .hist-table td{padding:9px 12px;vertical-align:middle;}
+    .td-date{color:var(--muted);font-size:.76rem;white-space:nowrap;}
+    .td-user{font-weight:700;}
+    .badge-in{background:#e8f5e9;color:#2e7d32;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:9px;text-transform:uppercase;}
+    .badge-out{background:#ffebee;color:#c62828;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:9px;text-transform:uppercase;}
+    .badge-move{background:#fff8e1;color:#f57f17;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:9px;text-transform:uppercase;}
+    .badge-resp{background:#e8eaf6;color:#1a237e;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:9px;text-transform:uppercase;}
+    .td-activity span{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:9px;font-size:.78rem;font-weight:600;}
+    .no-data{text-align:center;padding:32px;color:var(--muted);font-style:italic;}
+    .pagination{display:flex;align-items:center;justify-content:center;gap:5px;
+      padding:12px;background:var(--card);border-top:1px solid var(--border);}
+    .pg-btn{padding:5px 11px;border:1.5px solid var(--border);border-radius:6px;
+      background:#fff;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);transition:all .15s;}
+    .pg-btn:hover:not(:disabled){background:var(--primary);color:#fff;border-color:var(--primary);}
+    .pg-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+    .pg-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+    .toast{position:fixed;bottom:24px;right:24px;z-index:999;padding:14px 22px;border-radius:12px;
+      font-weight:700;font-size:.92rem;box-shadow:0 8px 24px rgba(0,0,0,.2);
+      display:flex;align-items:center;gap:10px;
+      transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none;}
+    .toast.show{transform:translateY(0);opacity:1;}
+    .toast.success{background:#1b5e20;color:#fff;}
+    .toast.error{background:#b71c1c;color:#fff;}
+    .toast.info{background:#1565c0;color:#fff;}
+
+    ::-webkit-scrollbar{width:5px;}
+    ::-webkit-scrollbar-thumb{background:#bbb;border-radius:4px;}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="8" fill="rgba(255,255,255,.2)"/>
+      <path d="M10 22L18 10L26 22" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="13" y="22" width="10" height="6" rx="1.5" stroke="#fff" stroke-width="2" fill="none"/>
+      <circle cx="18" cy="17" r="2" fill="#fff"/>
+    </svg>
+    <h1>Sistem Scanare Activități</h1>
+  </div>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
+  <button class="tab-btn"        onclick="switchTab('transfer',this)">🔄 Transfer Date</button>
+  <button class="tab-btn"        onclick="switchTab('istoric',this)">📋 Istoric</button>
+</div>
+
+<!-- ════════ DASHBOARD ════════ -->
+<div class="tab-content active" id="tab-dashboard">
+  <div class="main-wrap">
+    <div class="scan-card">
+      <div class="panel-title">⌨️ Introducere User</div>
+      <div class="scan-row">
+        <input class="scan-input" id="scanInput" type="text"
+          placeholder="Introdu sau scanează ID-ul userului cu scanner-ul de coduri de bare..."
+          autofocus onkeydown="if(event.key==='Enter') assignUser()"/>
+        <button class="scan-btn" onclick="assignUser()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Asignează
+        </button>
+      </div>
+      <select class="activity-select" id="activitySelect">
+        <option value="">— Selectează activitatea —</option>
+        <option value="0">Sorter Optimus</option>
+        <option value="1">Radra</option>
+        <option value="2">Cântare Podea + Dastec &amp; Matiro</option>
+        <option value="3">Consolidare Podea</option>
+        <option value="4">Încărcări și Descărcări</option>
+        <option value="5">Volume</option>
+        <option value="6">Reetichetare</option>
+        <option value="7">Atipice</option>
+      </select>
+      <div class="msg" id="msgBox"></div>
+    </div>
+    <div class="stats-bar" id="statsBar"></div>
+    <div class="grid"     id="activityGrid"></div>
+  </div>
+</div>
+
+<!-- ════════ TRANSFER ════════ -->
+<div class="tab-content" id="tab-transfer">
+  <div class="main-wrap">
+    <div class="transfer-grid">
+
+      <!-- EXPORT -->
+      <div class="transfer-card">
+        <div class="transfer-card-header th-export">
+          <div class="t-icon">📤</div>
+          <div><h3>Export Date</h3><p>Salvează datele pe acest laptop</p></div>
+        </div>
+        <div class="transfer-card-body">
+          <div class="export-options">
+            <button class="export-btn export-btn-full" onclick="exportJSON('all')">💾 Export COMPLET (JSON — stare + istoric)</button>
+            <button class="export-btn export-btn-hist" onclick="exportJSON('history')">📋 Export doar Istoric (JSON)</button>
+            <button class="export-btn export-btn-state" onclick="exportJSON('state')">👥 Export doar Stare Curentă (JSON)</button>
+            <hr class="export-divider"/>
+            <button class="export-btn export-btn-excel" onclick="exportExcel('full')">🟢 Export Excel COMPLET (toate foile)</button>
+            <button class="export-btn export-btn-excel" onclick="exportExcel('istoric')">🟢 Export Excel — Istoric</button>
+            <button class="export-btn export-btn-excel" onclick="exportExcel('stare')">🟢 Export Excel — Stare Curentă</button>
+            <hr class="export-divider"/>
+            <button class="export-btn export-btn-csv" onclick="exportCSV()">📊 Export CSV (pentru Excel clasic)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- IMPORT -->
+      <div class="transfer-card">
+        <div class="transfer-card-header th-import">
+          <div class="t-icon">📥</div>
+          <div><h3>Import Date</h3><p>Încarcă date de pe alt laptop</p></div>
+        </div>
+        <div class="transfer-card-body">
+          <div class="import-zone" id="importZone"
+            onclick="document.getElementById('importFileInput').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="handleDrop(event)">
+            <div class="iz-icon">📂</div>
+            <p><strong>Click sau trage fișierul JSON aici</strong></p>
+            <p style="margin-top:4px">Fișier exportat din această aplicație</p>
+          </div>
+          <input type="file" id="importFileInput" accept=".json" onchange="handleFileSelect(event)"/>
+          <div class="import-preview" id="importPreview"></div>
+          <div class="import-options">
+            <div class="imp-opt selected" id="opt-merge"   onclick="selectImportMode('merge')">🔀 Îmbinare<br><small>Adaugă la existente</small></div>
+            <div class="imp-opt"          id="opt-replace" onclick="selectImportMode('replace')">♻️ Înlocuire<br><small>Înlocuiește tot</small></div>
+          </div>
+          <button class="import-btn" id="importBtn" onclick="doImport()" disabled>📥 Importă Datele</button>
+        </div>
+      </div>
+
+      <!-- RESET -->
+      <div class="transfer-card">
+        <div class="transfer-card-header th-reset">
+          <div class="t-icon">🗑️</div>
+          <div><h3>Resetare Date</h3><p>Șterge date de pe acest laptop</p></div>
+        </div>
+        <div class="transfer-card-body">
+          <div class="reset-warning"><strong>⚠️ Atenție!</strong> Aceste acțiuni sunt ireversibile. Exportă datele înainte!</div>
+          <div class="reset-btns">
+            <button class="btn-reset-state" onclick="resetState()">👥 Resetează Starea Curentă</button>
+            <button class="btn-reset-all"   onclick="resetAll()">💣 Șterge Tot (stare + istoric)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- INFO -->
+      <div class="transfer-card">
+        <div class="transfer-card-header th-info">
+          <div class="t-icon">ℹ️</div>
+          <div><h3>Cum transferi datele?</h3><p>Ghid pas cu pas</p></div>
+        </div>
+        <div class="transfer-card-body">
+          <ul class="info-list">
+            <li><span class="info-icon">1️⃣</span><span>Pe laptopul <strong>sursă</strong>, apasă <strong>Export COMPLET (JSON)</strong></span></li>
+            <li><span class="info-icon">2️⃣</span><span>Trimite fișierul <code>.json</code> pe laptopul destinație</span></li>
+            <li><span class="info-icon">3️⃣</span><span>Pe laptopul destinație → tab <strong>Transfer Date</strong> → trage fișierul</span></li>
+            <li><span class="info-icon">4️⃣</span><span>Selectează modul și apasă <strong>Importă</strong> ✅</span></li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+    <div class="backup-history">
+      <div class="bh-header"><span>💾 Istoric Export-uri</span><small style="opacity:.7">Ultimele exporturi efectuate</small></div>
+      <div class="bh-body" id="backupHistBody"><div class="bh-empty">Nu a fost efectuat niciun export încă.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ ISTORIC ════════ -->
+<div class="tab-content" id="tab-istoric">
+  <div class="main-wrap">
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>User ID</label>
+        <input class="filter-input" id="f-user" type="text" placeholder="ex: USR001"/>
+      </div>
+      <div class="filter-group">
+        <label>Responsabil</label>
+        <input class="filter-input" id="f-resp" type="text" placeholder="Nume responsabil"/>
+      </div>
+      <div class="filter-group">
+        <label>Activitate</label>
+        <select class="filter-select" id="f-activity">
+          <option value="">Toate</option>
+          <option>Sorter Optimus</option><option>Radra</option>
+          <option>Cântare Podea + Dastec &amp; Matiro</option>
+          <option>Consolidare Podea</option><option>Încărcări și Descărcări</option>
+          <option>Volume</option><option>Reetichetare</option><option>Atipice</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Tip acțiune</label>
+        <select class="filter-select" id="f-type">
+          <option value="">Toate</option>
+          <option value="in">Asignat (IN)</option>
+          <option value="out">Eliminat (OUT)</option>
+          <option value="move">Mutat</option>
+          <option value="resp">Schimb Responsabil</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>De la dată</label>
+        <input class="filter-input" id="f-date-from" type="date"/>
+      </div>
+      <div class="filter-group">
+        <label>Până la dată</label>
+        <input class="filter-input" id="f-date-to" type="date"/>
+      </div>
+      <div class="filter-actions">
+        <button class="btn-filter btn-apply"      onclick="applyFilters()">🔍 Filtrează</button>
+        <button class="btn-filter btn-reset2"     onclick="resetFilters()">↺ Reset</button>
+        <button class="btn-filter btn-export-xls" onclick="exportExcel('filtrat')">🟢 Excel</button>
+        <button class="btn-filter btn-export-csv" onclick="exportCSV()">📊 CSV</button>
+        <button class="btn-filter btn-clear-hist" onclick="confirmClearHistory()">🗑 Șterge</button>
+      </div>
+    </div>
+    <div class="hist-summary" id="histSummary"></div>
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <span>📋 Jurnal Activitate</span>
+        <span class="page-info" id="pageInfo"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="hist-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('datetime')"    id="th-datetime">Data &amp; Ora ↕</th>
+              <th onclick="sortTable('uid')"         id="th-uid">User ID ↕</th>
+              <th onclick="sortTable('type')"        id="th-type">Acțiune ↕</th>
+              <th onclick="sortTable('activity')"    id="th-activity">Activitate ↕</th>
+              <th onclick="sortTable('responsabil')" id="th-responsabil">Responsabil ↕</th>
+              <th>Detalii</th>
+            </tr>
+          </thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ACTIVITIES=[
+  {name:"Sorter Optimus",                  emoji:"🔵",color:"c0",bg:"#e3f2fd",tc:"#1565c0"},
+  {name:"Radra",                           emoji:"🟣",color:"c1",bg:"#f3e5f5",tc:"#6a1b9a"},
+  {name:"Cântare Podea + Dastec & Matiro", emoji:"🟢",color:"c2",bg:"#e0f2f1",tc:"#00695c"},
+  {name:"Consolidare Podea",               emoji:"🟠",color:"c3",bg:"#fff3e0",tc:"#e65100"},
+  {name:"Încărcări și Descărcări",         emoji:"🔴",color:"c4",bg:"#fce4ec",tc:"#880e4f"},
+  {name:"Volume",                          emoji:"📦",color:"c5",bg:"#e8eaf6",tc:"#1a237e"},
+  {name:"Reetichetare",                    emoji:"🏷️",color:"c6",bg:"#e0f2f1",tc:"#004d40"},
+  {name:"Atipice",                         emoji:"⚡",color:"c7",bg:"#f3e5f5",tc:"#4a148c"},
+];
+const PAGE_SIZE=25;
+
+let state        = loadState();
+let responsabili = loadResponsabili();
+let history      = loadHistory();
+let backupLog    = loadBackupLog();
+let filtered     = [];
+let sortCol='datetime', sortDir=-1, curPage=1;
+let pendingImport=null, importMode='merge';
+
+/* ── PERSIST ── */
+function loadState(){
+  try{
+    const s=JSON.parse(localStorage.getItem('wms_state'));
+    if(s&&Array.isArray(s)){ while(s.length<ACTIVITIES.length) s.push([]); return s; }
+  }catch(e){}
+  return ACTIVITIES.map(()=>[]);
+}
+function saveState(){ localStorage.setItem('wms_state',JSON.stringify(state)); }
+function loadResponsabili(){
+  try{
+    const r=JSON.parse(localStorage.getItem('wms_responsabili'));
+    if(r&&Array.isArray(r)){ while(r.length<ACTIVITIES.length) r.push(''); return r; }
+  }catch(e){}
+  return ACTIVITIES.map(()=>'');
+}
+function saveResponsabili(){ localStorage.setItem('wms_responsabili',JSON.stringify(responsabili)); }
+function loadHistory(){ try{return JSON.parse(localStorage.getItem('wms_history'))||[];}catch{return [];} }
+function saveHistory(){ localStorage.setItem('wms_history',JSON.stringify(history)); }
+function loadBackupLog(){ try{return JSON.parse(localStorage.getItem('wms_backups'))||[];}catch{return [];} }
+function saveBackupLog(){ localStorage.setItem('wms_backups',JSON.stringify(backupLog)); }
+
+/* ── CLOCK ── */
+setInterval(()=>{
+  document.getElementById('clock').textContent=
+    new Date().toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+},1000);
+
+/* ── TABS ── */
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  btn.classList.add('active');
+  if(tab==='istoric')  applyFilters();
+  if(tab==='transfer') renderBackupLog();
+  if(tab==='dashboard') setTimeout(()=>document.getElementById('scanInput').focus(),50);
+}
+
+/* ── ASSIGN ── */
+function assignUser(){
+  const raw=document.getElementById('scanInput').value.trim();
+  const actIdx=document.getElementById('activitySelect').value;
+  if(!raw)        return showMsg('Introdu ID-ul userului!','error');
+  if(actIdx==='') return showMsg('Selectează o activitate!','error');
+  const idx=parseInt(actIdx), uid=raw.toUpperCase();
+  if(state[idx].find(u=>u.id===uid))
+    return showMsg(`${uid} este deja la "${ACTIVITIES[idx].name}"!`,'error');
+  let prev=null;
+  for(let i=0;i<state.length;i++){
+    const b=state[i].length; state[i]=state[i].filter(u=>u.id!==uid);
+    if(state[i].length<b) prev=ACTIVITIES[i].name;
+  }
+  const now=new Date();
+  state[idx].push({id:uid,time:now.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})});
+  saveState();
+  const resp=responsabili[idx]||'—';
+  if(prev) addHistoryEntry(uid,'move',ACTIVITIES[idx].name,resp,`Mutat din "${prev}" → "${ACTIVITIES[idx].name}"`);
+  else     addHistoryEntry(uid,'in',ACTIVITIES[idx].name,resp,`Asignat la "${ACTIVITIES[idx].name}"`);
+  showMsg(`✅ ${uid} asignat la "${ACTIVITIES[idx].name}"`,'success');
+  document.getElementById('scanInput').value='';
+  document.getElementById('scanInput').focus();
+  render();
+}
+
+function removeUser(actIdx,uid){
+  state[actIdx]=state[actIdx].filter(u=>u.id!==uid); saveState();
+  const resp=responsabili[actIdx]||'—';
+  addHistoryEntry(uid,'out',ACTIVITIES[actIdx].name,resp,`Eliminat din "${ACTIVITIES[actIdx].name}"`);
+  render();
+}
+
+/* ── RESPONSABIL ── */
+function toggleEditResp(idx){
+  const editRow=document.getElementById(`resp-edit-${idx}`);
+  const input  =document.getElementById(`resp-input-${idx}`);
+  const isOpen=editRow.classList.contains('show');
+  document.querySelectorAll('.resp-edit-row').forEach(r=>r.classList.remove('show'));
+  if(!isOpen){ input.value=responsabili[idx]||''; editRow.classList.add('show'); input.focus(); }
+}
+function saveResp(idx){
+  const val=document.getElementById(`resp-input-${idx}`).value.trim();
+  const old=responsabili[idx]||'';
+  responsabili[idx]=val; saveResponsabili();
+  document.getElementById(`resp-edit-${idx}`).classList.remove('show');
+  if(val!==old)
+    addHistoryEntry('—','resp',ACTIVITIES[idx].name,val,
+      old?`Responsabil schimbat: "${old}" → "${val||'Nealocat'}"`:`Responsabil setat: "${val}"`);
+  render(); showToast(`✅ Responsabil salvat pentru ${ACTIVITIES[idx].name}`,'success');
+}
+function cancelResp(idx){ document.getElementById(`resp-edit-${idx}`).classList.remove('show'); }
+
+/* ── HISTORY ENTRY ── */
+function addHistoryEntry(uid,type,activity,responsabil,details){
+  const now=new Date();
+  history.unshift({id:Date.now()+Math.random(),datetime:now.toISOString(),
+    dateDisplay:now.toLocaleDateString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric'}),
+    timeDisplay:now.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    uid,type,activity,responsabil,details});
+  if(history.length>5000) history=history.slice(0,5000);
+  saveHistory();
+}
+
+/* ── RENDER ── */
+function render(){ renderStats(); renderGrid(); }
+function renderStats(){
+  const total=state.reduce((s,a)=>s+a.length,0);
+  document.getElementById('statsBar').innerHTML=`
+    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Total Activi</div></div>
+    ${ACTIVITIES.map((a,i)=>`
+      <div class="stat-card"><div class="stat-num">${state[i].length}</div>
+      <div class="stat-label">${a.emoji} ${a.name}</div></div>`).join('')}
+    <div class="stat-card"><div class="stat-num">${history.length}</div><div class="stat-label">📋 Istoric</div></div>`;
+}
+function renderGrid(){
+  document.getElementById('activityGrid').innerHTML=ACTIVITIES.map((act,i)=>{
+    const resp=responsabili[i]||'';
+    return `
+    <div class="activity-card">
+      <div class="card-header ${act.color}">
+        <div class="card-icon">${act.emoji}</div>
+        <div class="card-header-info">
+          <div class="card-title">${act.name}</div>
+          <div class="card-subtitle">${state[i].length} user${state[i].length!==1?'i':''} activ${state[i].length!==1?'i':''}</div>
+        </div>
+        <div class="badge">${state[i].length}</div>
+      </div>
+      <div class="${act.color}" style="padding-bottom:10px;">
+        <div class="responsabil-strip">
+          <span class="resp-label">👤 Resp.</span>
+          <span class="resp-name ${resp?'':'empty'}">${resp||'Nealocat'}</span>
+          <button class="btn-edit-resp" onclick="toggleEditResp(${i})" title="Editează">✏️</button>
+        </div>
+        <div class="resp-edit-row" id="resp-edit-${i}" style="margin:0 16px 0;">
+          <input class="resp-input" id="resp-input-${i}" type="text"
+            placeholder="Introdu numele responsabilului..."
+            onkeydown="if(event.key==='Enter') saveResp(${i}); if(event.key==='Escape') cancelResp(${i})"/>
+          <button class="btn-save-resp"   onclick="saveResp(${i})">✓</button>
+          <button class="btn-cancel-resp" onclick="cancelResp(${i})">✕</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="users-label">Useri asignați</div>
+        ${state[i].length===0?'<div class="empty-state">Niciun user asignat</div>'
+          :state[i].map(u=>`<div class="user-chip">
+            <span>${u.id}</span><span class="chip-time">${u.time}</span>
+            <button class="remove-btn" onclick="removeUser(${i},'${u.id}')">✕</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════
+   EXPORT EXCEL — SheetJS
+══════════════════════════════════════ */
+function exportExcel(mode){
+  const wb = XLSX.utils.book_new();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ro-RO');
+  const filename = `Activitati_${now.toISOString().slice(0,10)}_${now.toTimeString().slice(0,5).replace(':','-')}.xlsx`;
+
+  /* ── Helper: setează lățimea coloanelor ── */
+  function setColWidths(ws, widths){
+    ws['!cols'] = widths.map(w=>({wch:w}));
+  }
+
+  /* ── Helper: stil header ── */
+  function styleHeader(ws, range, colCount){
+    for(let c=0;c<colCount;c++){
+      const addr = XLSX.utils.encode_cell({r:range,c});
+      if(!ws[addr]) continue;
+      ws[addr].s={
+        font:{bold:true,color:{rgb:'FFFFFF'},sz:11},
+        fill:{fgColor:{rgb:'1A237E'}},
+        alignment:{horizontal:'center',vertical:'center',wrapText:true},
+        border:{bottom:{style:'medium',color:{rgb:'FFFFFF'}}}
+      };
+    }
+  }
+
+  /* ── FOAIE 1: Stare Curentă ── */
+  if(mode==='full'||mode==='stare'){
+    const stareRows=[['Activitate','Responsabil','User ID','Ora Asignare']];
+    ACTIVITIES.forEach((act,i)=>{
+      const resp=responsabili[i]||'Nealocat';
+      if(state[i].length===0){
+        stareRows.push([act.name, resp, '—', '—']);
+      } else {
+        state[i].forEach(u=>{
+          stareRows.push([act.name, resp, u.id, u.time]);
+        });
+      }
+    });
+    const wsStare = XLSX.utils.aoa_to_sheet(stareRows);
+    setColWidths(wsStare,[30,25,20,15]);
+    styleHeader(wsStare,0,4);
+    XLSX.utils.book_append_sheet(wb, wsStare, 'Stare Curenta');
+  }
+
+  /* ── FOAIE 2: Responsabili ── */
+  if(mode==='full'||mode==='stare'){
+    const respRows=[['Nr.','Activitate','Responsabil','Useri Activi']];
+    ACTIVITIES.forEach((act,i)=>{
+      respRows.push([i+1, act.name, responsabili[i]||'Nealocat', state[i].length]);
+    });
+    const wsResp = XLSX.utils.aoa_to_sheet(respRows);
+    setColWidths(wsResp,[5,32,25,15]);
+    styleHeader(wsResp,0,4);
+    XLSX.utils.book_append_sheet(wb, wsResp, 'Responsabili');
+  }
+
+  /* ── FOAIE 3: Istoric ── */
+  if(mode==='full'||mode==='istoric'||mode==='filtrat'){
+    const data = (mode==='filtrat' && filtered.length) ? filtered : history;
+    if(data.length===0 && mode!=='full'){
+      showToast('Nu există date de exportat.','error'); return;
+    }
+    const typeLabel={in:'IN',out:'OUT',move:'MUTAT',resp:'RESPONSABIL'};
+    const histRows=[['Data','Ora','User ID','Actiune','Activitate','Responsabil','Detalii']];
+    data.forEach(r=>{
+      histRows.push([
+        r.dateDisplay, r.timeDisplay, r.uid,
+        typeLabel[r.type]||r.type,
+        r.activity, r.responsabil||'—', r.details
+      ]);
+    });
+    const wsHist = XLSX.utils.aoa_to_sheet(histRows);
+    setColWidths(wsHist,[12,10,15,12,32,25,45]);
+    styleHeader(wsHist,0,7);
+    XLSX.utils.book_append_sheet(wb, wsHist, 'Istoric');
+  }
+
+  /* ── FOAIE 4: Sumar pe activitate ── */
+  if(mode==='full'){
+    const sumRows=[['Activitate','Responsabil','Useri Activi','Total IN','Total OUT','Total Mutari']];
+    ACTIVITIES.forEach((act,i)=>{
+      const actHistory=history.filter(r=>r.activity===act.name);
+      sumRows.push([
+        act.name,
+        responsabili[i]||'Nealocat',
+        state[i].length,
+        actHistory.filter(r=>r.type==='in').length,
+        actHistory.filter(r=>r.type==='out').length,
+        actHistory.filter(r=>r.type==='move').length,
+      ]);
+    });
+    const wsSumar = XLSX.utils.aoa_to_sheet(sumRows);
+    setColWidths(wsSumar,[30,25,14,12,12,14]);
+    styleHeader(wsSumar,0,6);
+    XLSX.utils.book_append_sheet(wb, wsSumar, 'Sumar Activitati');
+  }
+
+  if(wb.SheetNames.length===0){
+    showToast('Nu există date de exportat.','error'); return;
+  }
+
+  XLSX.writeFile(wb, filename);
+
+  // log export
+  backupLog.unshift({time:now.toLocaleString('ro-RO'),mode:'excel-'+mode,filename,
+    stateCount:state.reduce((s,a)=>s+a.length,0),histCount:history.length});
+  if(backupLog.length>20) backupLog.pop();
+  saveBackupLog(); renderBackupLog();
+  showToast('✅ Excel salvat: '+filename,'success');
+}
+
+/* ── EXPORT JSON ── */
+function exportJSON(mode){
+  const now=new Date();
+  const filename=`Backup_${now.toISOString().slice(0,10)}_${now.toTimeString().slice(0,5).replace(':','-')}.json`;
+  let payload;
+  if(mode==='all')     payload={version:3,exportedAt:now.toISOString(),includes:{state:true,history:true,responsabili:true},state,responsabili,history};
+  if(mode==='history') payload={version:3,exportedAt:now.toISOString(),includes:{state:false,history:true,responsabili:false},history};
+  if(mode==='state')   payload={version:3,exportedAt:now.toISOString(),includes:{state:true,history:false,responsabili:true},state,responsabili};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+  a.download=filename; a.click();
+  backupLog.unshift({time:now.toLocaleString('ro-RO'),mode,filename,
+    stateCount:state.reduce((s,a)=>s+a.length,0),histCount:history.length});
+  if(backupLog.length>20) backupLog.pop();
+  saveBackupLog(); renderBackupLog();
+  showToast('✅ JSON salvat: '+filename,'success');
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV(){
+  const data=filtered.length?filtered:history;
+  if(!data.length){showToast('Nu există date de exportat.','error');return;}
+  const csv=[['Data','Ora','User ID','Actiune','Activitate','Responsabil','Detalii'],
+    ...data.map(r=>[r.dateDisplay,r.timeDisplay,r.uid,
+      r.type==='in'?'IN':r.type==='out'?'OUT':r.type==='move'?'MUTAT':'RESPONSABIL',
+      r.activity,r.responsabil||'—',r.details])
+  ].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`Istoric_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+/* ── BACKUP LOG ── */
+function renderBackupLog(){
+  const el=document.getElementById('backupHistBody');
+  if(!backupLog.length){ el.innerHTML='<div class="bh-empty">Nu a fost efectuat niciun export încă.</div>'; return; }
+  const ml={all:'JSON Complet',history:'JSON Istoric',state:'JSON Stare',
+    'excel-full':'Excel Complet','excel-istoric':'Excel Istoric','excel-stare':'Excel Stare','excel-filtrat':'Excel Filtrat'};
+  el.innerHTML=backupLog.map(b=>`
+    <div class="bh-row">
+      <div class="bh-dot" style="background:${b.mode.startsWith('excel')?'#1b5e20':'#1565c0'}"></div>
+      <div class="bh-time">${b.time}</div>
+      <div class="bh-msg"><strong>${ml[b.mode]||b.mode}</strong> — ${b.histCount} înregistrări, ${b.stateCount} useri activi</div>
+      <span style="font-size:.75rem;color:var(--muted)">${b.filename}</span>
+    </div>`).join('');
+}
+
+/* ── IMPORT ── */
+function selectImportMode(mode){
+  importMode=mode;
+  document.getElementById('opt-merge').classList.toggle('selected',mode==='merge');
+  document.getElementById('opt-replace').classList.toggle('selected',mode==='replace');
+}
+function handleDrop(e){
+  e.preventDefault(); document.getElementById('importZone').classList.remove('drag-over');
+  const f=e.dataTransfer.files[0]; if(f) readImportFile(f);
+}
+function handleFileSelect(e){ const f=e.target.files[0]; if(f) readImportFile(f); }
+function readImportFile(file){
+  if(!file.name.endsWith('.json')){ showToast('⚠️ Selectează un fișier .json!','error'); return; }
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.version){ showToast('Fișier invalid.','error'); return; }
+      pendingImport=data;
+      const lines=[`📅 Exportat la: <strong>${new Date(data.exportedAt).toLocaleString('ro-RO')}</strong>`];
+      if(data.includes.history)      lines.push(`📋 Înregistrări: <strong>${data.history?.length||0}</strong>`);
+      if(data.includes.state)        lines.push(`👥 Useri activi: <strong>${(data.state||[]).reduce((s,a)=>s+a.length,0)}</strong>`);
+      if(data.includes.responsabili) lines.push(`👤 Responsabili incluși`);
+      const prev=document.getElementById('importPreview');
+      prev.innerHTML=lines.join('<br/>'); prev.classList.add('show');
+      document.getElementById('importBtn').disabled=false;
+      showToast('📂 Fișier încărcat. Apasă Importă!','info');
+    }catch(err){ showToast('Eroare: '+err,'error'); }
+  };
+  r.readAsText(file);
+}
+function doImport(){
+  if(!pendingImport){ showToast('Nu există fișier.','error'); return; }
+  const data=pendingImport; let msg=[];
+  if(importMode==='replace'){
+    if(data.includes.state&&data.state){
+      state=data.state; while(state.length<ACTIVITIES.length) state.push([]); saveState(); msg.push('Stare înlocuită');
+    }
+    if(data.includes.responsabili&&data.responsabili){
+      responsabili=data.responsabili; while(responsabili.length<ACTIVITIES.length) responsabili.push('');
+      saveResponsabili(); msg.push('Responsabili înlocuiți');
+    }
+    if(data.includes.history&&data.history){ history=data.history; saveHistory(); msg.push(`${history.length} înregistrări`); }
+  } else {
+    if(data.includes.history&&data.history){
+      const ids=new Set(history.map(r=>r.id));
+      const n=data.history.filter(r=>!ids.has(r.id));
+      history=[...history,...n].sort((a,b)=>new Date(b.datetime)-new Date(a.datetime));
+      if(history.length>5000) history=history.slice(0,5000);
+      saveHistory(); msg.push(`+${n.length} înregistrări noi`);
+    }
+    if(data.includes.state&&data.state){
+      for(let i=0;i<Math.min(data.state.length,ACTIVITIES.length);i++)
+        (data.state[i]||[]).forEach(u=>{ if(!state[i].find(x=>x.id===u.id)) state[i].push(u); });
+      saveState(); msg.push('Stare îmbinată');
+    }
+    if(data.includes.responsabili&&data.responsabili){
+      data.responsabili.forEach((r,i)=>{ if(i<ACTIVITIES.length&&r&&!responsabili[i]) responsabili[i]=r; });
+      saveResponsabili(); msg.push('Responsabili îmbinați');
+    }
+  }
+  render(); pendingImport=null;
+  document.getElementById('importPreview').classList.remove('show');
+  document.getElementById('importBtn').disabled=true;
+  document.getElementById('importFileInput').value='';
+  showToast('✅ Import reușit! '+msg.join(', '),'success');
+}
+
+/* ── RESET ── */
+function resetState(){
+  if(confirm('Resetezi starea curentă? Istoricul și responsabilii rămân intacți.')){
+    state=ACTIVITIES.map(()=>[]); saveState(); render(); showToast('👥 Stare resetată.','info');
+  }
+}
+function resetAll(){
+  if(confirm('⚠️ Ștergi TOT (stare, responsabili, istoric)?')){
+    state=ACTIVITIES.map(()=>[]); saveState();
+    responsabili=ACTIVITIES.map(()=>''); saveResponsabili();
+    history=[]; saveHistory();
+    render(); applyFilters(); showToast('💣 Toate datele șterse.','error');
+  }
+}
+
+/* ── FILTERS ── */
+function applyFilters(){
+  const fUser=document.getElementById('f-user').value.trim().toUpperCase();
+  const fResp=document.getElementById('f-resp').value.trim().toLowerCase();
+  const fAct =document.getElementById('f-activity').value;
+  const fType=document.getElementById('f-type').value;
+  const fFrom=document.getElementById('f-date-from').value;
+  const fTo  =document.getElementById('f-date-to').value;
+  filtered=history.filter(r=>{
+    if(fUser && !r.uid.includes(fUser))                              return false;
+    if(fResp && !(r.responsabil||'').toLowerCase().includes(fResp)) return false;
+    if(fAct  && r.activity!==fAct)                                  return false;
+    if(fType && r.type!==fType)                                     return false;
+    const d=new Date(r.datetime);
+    if(fFrom && d<new Date(fFrom))                                  return false;
+    if(fTo   && d>new Date(fTo+'T23:59:59'))                        return false;
+    return true;
+  });
+  sortTable(sortCol,true); curPage=1; renderHistSummary(); renderHistTable();
+}
+function resetFilters(){
+  ['f-user','f-resp','f-date-from','f-date-to'].forEach(id=>document.getElementById(id).value='');
+  ['f-activity','f-type'].forEach(id=>document.getElementById(id).value='');
+  applyFilters();
+}
+
+/* ── SORT ── */
+function sortTable(col,keepDir=false){
+  if(!keepDir){ if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=-1;} }
+  document.querySelectorAll('.hist-table thead th').forEach(th=>th.classList.remove('sorted'));
+  const th=document.getElementById('th-'+col); if(th) th.classList.add('sorted');
+  filtered.sort((a,b)=>{
+    let va=a[col]||'',vb=b[col]||'';
+    if(col==='datetime'){va=new Date(va);vb=new Date(vb);}
+    return va<vb?sortDir:va>vb?-sortDir:0;
+  });
+  renderHistTable();
+}
+
+/* ── RENDER ISTORIC ── */
+function renderHistSummary(){
+  const ins  =filtered.filter(r=>r.type==='in').length;
+  const outs =filtered.filter(r=>r.type==='out').length;
+  const moves=filtered.filter(r=>r.type==='move').length;
+  const resps=filtered.filter(r=>r.type==='resp').length;
+  const users=[...new Set(filtered.map(r=>r.uid).filter(u=>u!=='—'))].length;
+  document.getElementById('histSummary').innerHTML=`
+    <div class="hist-stat">Total: <strong>${filtered.length}</strong></div>
+    <div class="hist-stat">Useri unici: <strong>${users}</strong></div>
+    <div class="hist-stat" style="color:#2e7d32">✅ IN: <strong>${ins}</strong></div>
+    <div class="hist-stat" style="color:#c62828">❌ OUT: <strong>${outs}</strong></div>
+    <div class="hist-stat" style="color:#f57f17">🔄 Mutări: <strong>${moves}</strong></div>
+    <div class="hist-stat" style="color:#1a237e">👤 Resp.: <strong>${resps}</strong></div>`;
+}
+function renderHistTable(){
+  const totalPages=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
+  if(curPage>totalPages) curPage=totalPages;
+  const rows=filtered.slice((curPage-1)*PAGE_SIZE,curPage*PAGE_SIZE);
+  document.getElementById('pageInfo').textContent=`${filtered.length} înreg. | Pag. ${curPage}/${totalPages}`;
+  const tbody=document.getElementById('histBody');
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="6" class="no-data">📭 Nu există înregistrări pentru filtrele selectate.</td></tr>';
+  } else {
+    tbody.innerHTML=rows.map(r=>{
+      const act=ACTIVITIES.find(a=>a.name===r.activity)||{bg:'#f0f2f8',tc:'#555',emoji:'📌'};
+      const badge=r.type==='in'?'<span class="badge-in">IN</span>':
+        r.type==='out'?'<span class="badge-out">OUT</span>':
+        r.type==='move'?'<span class="badge-move">MUTAT</span>':
+        '<span class="badge-resp">👤 RESP.</span>';
+      return `<tr>
+        <td class="td-date"><div>${r.dateDisplay}</div><div style="color:#aaa;font-size:.68rem;">${r.timeDisplay}</div></td>
+        <td class="td-user">${r.uid}</td><td>${badge}</td>
+        <td class="td-activity"><span style="background:${act.bg};color:${act.tc}">${act.emoji} ${r.activity}</span></td>
+        <td style="font-weight:600;font-size:.82rem;">${r.responsabil||'—'}</td>
+        <td style="color:var(--muted);font-size:.8rem;">${r.details}</td>
+      </tr>`;
+    }).join('');
+  }
+  renderPagination(totalPages);
+}
+function renderPagination(totalPages){
+  const el=document.getElementById('pagination');
+  if(totalPages<=1){el.innerHTML='';return;}
+  let html=`<button class="pg-btn" onclick="goPage(${curPage-1})" ${curPage===1?'disabled':''}>‹</button>`;
+  let s=Math.max(1,curPage-2),e=Math.min(totalPages,curPage+2);
+  if(s>1) html+=`<button class="pg-btn" onclick="goPage(1)">1</button>${s>2?'<span style="padding:0 4px">…</span>':''}`;
+  for(let i=s;i<=e;i++) html+=`<button class="pg-btn ${i===curPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  if(e<totalPages) html+=`${e<totalPages-1?'<span style="padding:0 4px">…</span>':''}<button class="pg-btn" onclick="goPage(${totalPages})">${totalPages}</button>`;
+  html+=`<button class="pg-btn" onclick="goPage(${curPage+1})" ${curPage===totalPages?'disabled':''}>›</button>`;
+  el.innerHTML=html;
+}
+function goPage(p){curPage=p;renderHistTable();}
+
+function confirmClearHistory(){
+  if(confirm('⚠️ Ștergi ÎNTREGUL istoric?')){ history=[];saveHistory();applyFilters();render(); }
+}
+
+/* ── MSG & TOAST ── */
+function showMsg(text,type){
+  const el=document.getElementById('msgBox');
+  el.textContent=text;el.className='msg '+type;el.style.display='block';
+  setTimeout(()=>el.style.display='none',3000);
+}
+let toastTimer=null;
+function showToast(text,type){
+  const el=document.getElementById('toast');
+  el.textContent=text;el.className='toast '+type+' show';
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+/* ── INIT ── */
+filtered=[...history]; render(); applyFilters(); renderBackupLog();
+</script>
+</body>
+</html>
