@@ -308,7 +308,7 @@ try{
   firebase.initializeApp({
     apiKey:"AIzaSyDyeuUE7SWipIW4bDCZvAYeQPOheJwitSk",
     authDomain:"activitati-ovs.firebaseapp.com",
-    databaseURL:"https://activitati-ovs-default-rtdb.europe-west1.firebasedatabase.app",
+    databaseURL:"https://activitati-ovs-default-rtdb.europe-west1.firebasedatabase.app/",
     projectId:"activitati-ovs",
     storageBucket:"activitati-ovs.firebasestorage.app",
     messagingSenderId:"683372600377",
@@ -524,4 +524,13 @@ function rPgn(tp){
 }
 function gp(p){pg=p;rHtbl();}
 
-function clearHist(){if(!confirm('Stergi INTREGUL istoric? Aceasta actiune afecteaza toti utilizatorii!'))return;if(db)db.ref('wms/hist').set(null)
+function clearHist(){if(!confirm('Stergi INTREGUL istoric? Aceasta actiune afecteaza toti utilizatorii!'))return;if(db)db.ref('wms/hist').set(null);showToast('Istoric sters.','inf');}
+
+function showMsg(t,tp){var el=document.getElementById('msgBox');el.textContent=t;el.className='msg '+tp;el.style.display='block';setTimeout(function(){el.style.display='none';},3000);}
+var tt=null;
+function showToast(t,tp){var el=document.getElementById('toast');el.textContent=t;el.className='toast '+tp+' show';clearTimeout(tt);tt=setTimeout(function(){el.classList.remove('show');},3500);}
+
+rStats();rGrid();
+</script>
+</body>
+</html>
