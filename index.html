@@ -362,7 +362,7 @@ function assignUser(){
   var ai=document.getElementById('actSel').value;
   if(!raw)return showMsg('Introdu ID-ul userului!','err');
   if(ai==='')return showMsg('Selecteaza o activitate!','err');
-  var idx=parseInt(ai),uid=raw.toUpperCase();
+  var idx=parseInt(ai),uid=raw.toUpperCase().replace(/[^A-Z0-9_\-\.]/g,'');if(!uid)return showMsg('ID invalid!','err');
   if(state[idx].find(function(u){return u.id===uid;}))return showMsg(uid+' este deja la "'+ACTS[idx].name+'"!','err');
   var prev=null;
   var ns=state.map(function(a){return a.slice();});
@@ -466,8 +466,8 @@ function exportJSON(){
   showToast('Backup JSON salvat!','ok');
 }
 
-function resetState(){if(!confirm('Resetezi starea curenta pe TOATE laptopurile?'))return;if(db)db.ref('wms/state').set(null);showToast('Stare resetata.','inf');}
-function resetAll(){if(!confirm('Stergi TOT din Firebase?'))return;if(db)db.ref('wms').set(null);showToast('Date sterse.','err');}
+function resetState(){if(!confirm('Resetezi starea curenta pe TOATE laptopurile?\nToti userii activi vor fi eliminati din activitati!'))return;if(db)db.ref('wms/state').set(null);showToast('Stare curenta resetata.','inf');}
+function resetAll(){if(!confirm('Atentie! Aceasta actiune sterge TOT din Firebase si afecteaza TOTI utilizatorii!\nEsti sigur?'))return;var code=prompt('Scrie CONFIRM pentru a continua:');if(code!=='CONFIRM'){showToast('Resetare anulata.','inf');return;}if(db)db.ref('wms').set(null);showToast('Toate datele au fost sterse.','err');}
 
 function applyF(){
   var fu=document.getElementById('fu').value.trim().toUpperCase(),fr=document.getElementById('fr').value.trim().toLowerCase(),fa=document.getElementById('fa').value,ft=document.getElementById('ft').value,fd1=document.getElementById('fd1').value,fd2=document.getElementById('fd2').value;
@@ -476,7 +476,7 @@ function applyF(){
     if(fr&&(r.responsabil||'').toLowerCase().indexOf(fr)===-1)return false;
     if(fa&&r.activity!==fa)return false;if(ft&&r.type!==ft)return false;
     var d=new Date(r.datetime);
-    if(fd1&&d<new Date(fd1))return false;if(fd2&&d>new Date(fd2+'T23:59:59'))return false;
+    if(fd1&&d<new Date(fd1+'T00:00:00.000'))return false;if(fd2&&d>new Date(fd2+'T23:59:59.999'))return false;
     return true;
   });
   srt(sCol,true);pg=1;rHsum();rHtbl();
@@ -486,7 +486,7 @@ function resetF(){['fu','fr','fd1','fd2'].forEach(function(id){document.getEleme
 function srt(col,keep){
   if(!keep){if(sCol===col)sDir*=-1;else{sCol=col;sDir=-1;}}
   document.querySelectorAll('.ht thead th').forEach(function(t){t.classList.remove('st');});
-  var th=document.getElementById('th-'+col.slice(0,2));if(th)th.classList.add('st');
+  var colMap={'datetime':'dt','uid':'uid','type':'tp','activity':'ac','responsabil':'rs'};var th=document.getElementById('th-'+(colMap[col]||col));if(th)th.classList.add('st');
   filt.sort(function(a,b){var va=a[col]||'',vb=b[col]||'';if(col==='datetime'){va=new Date(va);vb=new Date(vb);}return va<vb?sDir:va>vb?-sDir:0;});
   rHtbl();
 }
@@ -524,13 +524,4 @@ function rPgn(tp){
 }
 function gp(p){pg=p;rHtbl();}
 
-function clearHist(){if(!confirm('Stergi INTREGUL istoric din Firebase?'))return;if(db)db.ref('wms/hist').set(null);hist=[];filt=[];rHsum();rHtbl();rStats();}
-
-function showMsg(t,tp){var el=document.getElementById('msgBox');el.textContent=t;el.className='msg '+tp;el.style.display='block';setTimeout(function(){el.style.display='none';},3000);}
-var tt=null;
-function showToast(t,tp){var el=document.getElementById('toast');el.textContent=t;el.className='toast '+tp+' show';clearTimeout(tt);tt=setTimeout(function(){el.classList.remove('show');},3500);}
-
-rStats();rGrid();
-</script>
-</body>
-</html>
+function clearHist(){if(!confirm('Stergi INTREGUL istoric? Aceasta actiune afecteaza toti utilizatorii!'))return;if(db)db.ref('wms/hist').set(null)
