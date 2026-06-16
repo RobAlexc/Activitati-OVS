@@ -219,7 +219,7 @@ header h1{font-size:1rem;font-weight:700;}
 <div class="ecard">
 <div class="ech hr"><div class="ei">&#x1F5D1;</div><div><h3>Resetare Date</h3><p>Sterge date din Firebase</p></div></div>
 <div class="ecb">
-<div class="rw"><strong>Atentie!</strong>Afecteaza TOTI utilizatorii conectati!</div>
+<div class="rw"><strong>Atentie!</strong> Afecteaza TOTI utilizatorii conectati!</div>
 <div class="rbs">
 <button class="br brs" onclick="resetState()">Reseteaza Starea Curenta</button>
 <button class="br bra" onclick="resetAll()">Sterge Tot</button>
@@ -412,7 +412,7 @@ function rGrid(){
     h+='<div class="'+a.c+'" style="padding-bottom:9px;">';
     h+='<div class="rs"><span class="rl">Resp.</span><span class="rn'+(rp?'':' empty')+'">'+(rp||'Nealocat')+'</span>';
     h+='<button class="ber" onclick="togResp('+i+')">&#9998;</button></div>';
-    h+='<div class="re" id="re-'+i+'" style="margin:0 14px 0;">';
+    h+='<div class="re" id="re-'+i+'">';
     h+='<input class="ri" id="ri-'+i+'" type="text" placeholder="Numele responsabilului..." onkeydown="rkd(event,'+i+')" />';
     h+='<button class="bsr" onclick="savResp('+i+')">OK</button>';
     h+='<button class="bcr" onclick="canResp('+i+')">X</button></div></div>';
@@ -454,8 +454,7 @@ function exportCSV(){
   var d=filt.length?filt:hist;if(!d.length){showToast('Nu exista date.','err');return;}
   var rows=[['Data','Ora','User ID','Actiune','Activitate','Responsabil','Detalii']];
   d.forEach(function(r){rows.push([r.dateDisplay,r.timeDisplay,r.uid,r.type==='in'?'IN':r.type==='out'?'OUT':r.type==='move'?'MUTAT':'RESPONSABIL',r.activity,r.responsabil||'-',r.details]);});
-  var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('
-');
+  var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'}));a.download='OVS_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
 }
 
