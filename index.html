@@ -528,7 +528,14 @@ const PAGE_SIZE=25;
 let state        = ACTIVITIES.map(()=>[]);
 // responsabili[i] = {T1:'...', T2:'...', T3:'...'}
 let responsabili = ACTIVITIES.map(()=>({T1:'',T2:'',T3:''}));
-let activeTura   = ACTIVITIES.map(()=>'T1'); // tura activ afisata per card
+function loadActiveTura(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('wms_activeTura'));
+    if(Array.isArray(saved) && saved.length === ACTIVITIES.length) return saved;
+  }catch(e){}
+  return ACTIVITIES.map(()=>'T1');
+}
+let activeTura = loadActiveTura();
 let historyData  = [];
 let backupLog    = loadBackupLog();
 let filtered     = [];
@@ -749,6 +756,7 @@ function onDrop(e, toIdx){
 /* ── TURA TABS ── */
 function switchTura(actIdx, tura){
   activeTura[actIdx]=tura;
+  localStorage.setItem('wms_activeTura', JSON.stringify(activeTura));
   // update tabs UI
   ['T1','T2','T3'].forEach(t=>{
     const tab=document.getElementById(`tura-tab-${actIdx}-${t}`);
