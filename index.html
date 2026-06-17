@@ -14,6 +14,9 @@
       --card:#ffffff;    --text:#1a1a2e;
       --muted:#6b7280;   --border:#e0e0e0;
       --shadow:0 4px 20px rgba(26,35,126,0.10);
+      --t1:#1565c0; --t1-light:#e3f2fd;
+      --t2:#2e7d32; --t2-light:#e8f5e9;
+      --t3:#e65100; --t3-light:#fff3e0;
     }
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
@@ -62,10 +65,11 @@
     .stat-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;
       letter-spacing:.4px;margin-top:2px;line-height:1.3;}
 
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;}
     .activity-card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);
       overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;}
     .activity-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(26,35,126,.15);}
+    .activity-card.drag-over-card{box-shadow:0 0 0 3px #43a047,0 8px 24px rgba(26,35,126,.2);transform:translateY(-3px);}
     .card-header{padding:13px 16px 10px;display:flex;align-items:flex-start;gap:10px;}
     .card-icon{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.2);
       display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;margin-top:2px;}
@@ -74,18 +78,32 @@
     .card-subtitle{font-size:.72rem;color:rgba(255,255,255,.75);margin-top:1px;}
     .badge{background:rgba(255,255,255,.25);color:#fff;font-weight:800;font-size:.85rem;
       padding:4px 10px;border-radius:16px;min-width:30px;text-align:center;flex-shrink:0;margin-top:2px;}
-    .responsabil-strip{margin:0 16px;padding:8px 12px;background:rgba(255,255,255,0.18);
-      border-radius:8px;display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-    .resp-label{font-size:.7rem;color:rgba(255,255,255,.8);font-weight:600;
-      text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
-    .resp-name{font-size:.88rem;font-weight:700;color:#fff;flex:1;
+
+    /* ── TURE ── */
+    .ture-section{margin:0 16px 10px;}
+    .ture-tabs{display:flex;gap:4px;margin-bottom:6px;}
+    .tura-tab{flex:1;padding:4px 0;border:none;border-radius:6px 6px 0 0;font-size:.7rem;font-weight:700;
+      cursor:pointer;color:#fff;opacity:.55;transition:opacity .15s;}
+    .tura-tab.t1{background:var(--t1);}
+    .tura-tab.t2{background:var(--t2);}
+    .tura-tab.t3{background:var(--t3);}
+    .tura-tab.active{opacity:1;}
+    .tura-panels > div{display:none;}
+    .tura-panels > div.active{display:block;}
+    .tura-strip{padding:7px 10px;border-radius:0 0 8px 8px;display:flex;align-items:center;gap:7px;}
+    .tura-strip.t1{background:rgba(21,101,192,.22);}
+    .tura-strip.t2{background:rgba(46,125,50,.22);}
+    .tura-strip.t3{background:rgba(230,81,0,.22);}
+    .tura-label{font-size:.68rem;font-weight:700;color:rgba(255,255,255,.8);
+      text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+    .tura-name{font-size:.86rem;font-weight:700;color:#fff;flex:1;
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .resp-name.empty{color:rgba(255,255,255,.5);font-weight:400;font-style:italic;}
-    .btn-edit-resp{background:rgba(255,255,255,.25);border:none;color:#fff;width:26px;height:26px;
+    .tura-name.empty{color:rgba(255,255,255,.45);font-style:italic;font-weight:400;}
+    .btn-edit-resp{background:rgba(255,255,255,.22);border:none;color:#fff;width:26px;height:26px;
       border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;
       justify-content:center;font-size:.8rem;transition:background .15s;}
     .btn-edit-resp:hover{background:rgba(255,255,255,.4);}
-    .resp-edit-row{display:none;margin:0 16px 10px;gap:6px;}
+    .resp-edit-row{display:none;margin:0 0 6px;gap:6px;padding:0 10px;}
     .resp-edit-row.show{display:flex;}
     .resp-input{flex:1;padding:7px 10px;font-size:.88rem;border:2px solid rgba(255,255,255,.5);
       border-radius:8px;background:rgba(255,255,255,.15);color:#fff;outline:none;font-weight:600;}
@@ -97,18 +115,29 @@
     .btn-cancel-resp{padding:7px 10px;background:rgba(255,255,255,.2);color:#fff;
       border:none;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer;}
     .btn-cancel-resp:hover{background:rgba(255,255,255,.3);}
+
     .card-body{padding:12px 16px;flex:1;}
     .users-label{font-size:.72rem;font-weight:700;color:var(--muted);
-      text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+      text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;
+      display:flex;align-items:center;gap:6px;}
+    .drag-hint{font-size:.65rem;color:#aaa;font-weight:400;font-style:italic;}
+
+    /* ── USER CHIPS (draggable) ── */
     .user-chip{display:inline-flex;align-items:center;gap:6px;background:#f0f2f8;
       border:1.5px solid #dde1f0;border-radius:18px;padding:4px 8px 4px 12px;
-      margin:3px;font-size:.83rem;font-weight:600;}
+      margin:3px;font-size:.83rem;font-weight:600;cursor:grab;transition:opacity .15s,box-shadow .15s,transform .15s;
+      user-select:none;}
+    .user-chip:hover{box-shadow:0 3px 10px rgba(26,35,126,.18);transform:scale(1.04);}
+    .user-chip.dragging{opacity:.4;transform:scale(.95);}
     .chip-time{font-size:.68rem;color:var(--muted);font-weight:400;}
+    .chip-drag-icon{font-size:.72rem;color:#bbb;margin-right:2px;}
     .remove-btn{background:#ffebee;color:#c62828;border:none;border-radius:50%;
       width:19px;height:19px;cursor:pointer;font-weight:800;font-size:.78rem;
       display:flex;align-items:center;justify-content:center;}
     .remove-btn:hover{background:var(--danger);color:#fff;}
     .empty-state{color:var(--muted);font-size:.82rem;text-align:center;padding:14px 0;font-style:italic;}
+    .drop-zone-body{min-height:50px;border-radius:8px;transition:background .15s;}
+    .drop-zone-body.drag-active{background:rgba(67,160,71,.1);border:2px dashed #43a047;}
 
     .c0{background:linear-gradient(135deg,#1565c0,#1e88e5);}
     .c1{background:linear-gradient(135deg,#6a1b9a,#8e24aa);}
@@ -146,7 +175,6 @@
     .export-btn-excel{background:#e8f5e9;color:#1b5e20;border:2px solid #81c784;}
     .export-btn-excel:hover{background:#c8e6c9;}
     .export-divider{border:none;border-top:1px solid var(--border);margin:4px 0;}
-
     .import-zone{border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;
       cursor:pointer;transition:all .2s;background:#fafafa;}
     .import-zone:hover,.import-zone.drag-over{border-color:var(--primary-light);background:#eef0fa;}
@@ -175,11 +203,9 @@
       padding:16px;margin-bottom:16px;color:#b71c1c;font-size:.88rem;}
     .reset-warning strong{display:block;font-size:1rem;margin-bottom:4px;}
     .reset-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
-    .btn-reset-state{padding:11px 20px;background:#ff6f00;color:#fff;border:none;border-radius:9px;
-      font-weight:700;cursor:pointer;font-size:.88rem;}
+    .btn-reset-state{padding:11px 20px;background:#ff6f00;color:#fff;border:none;border-radius:9px;font-weight:700;cursor:pointer;font-size:.88rem;}
     .btn-reset-state:hover{background:#e65100;}
-    .btn-reset-all{padding:11px 20px;background:#b71c1c;color:#fff;border:none;border-radius:9px;
-      font-weight:700;cursor:pointer;font-size:.88rem;}
+    .btn-reset-all{padding:11px 20px;background:#b71c1c;color:#fff;border:none;border-radius:9px;font-weight:700;cursor:pointer;font-size:.88rem;}
     .btn-reset-all:hover{background:var(--danger);}
     .backup-history{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
     .bh-header{background:linear-gradient(135deg,#37474f,#546e7a);color:#fff;padding:13px 18px;
@@ -198,32 +224,25 @@
     .filter-bar{background:var(--card);border-radius:14px;box-shadow:var(--shadow);
       padding:16px 18px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
     .filter-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px;}
-    .filter-group label{font-size:.72rem;font-weight:700;color:var(--muted);
-      text-transform:uppercase;letter-spacing:.5px;}
-    .filter-input,.filter-select{padding:8px 11px;border:2px solid var(--border);
-      border-radius:8px;font-size:.88rem;outline:none;background:#fff;transition:border .2s;}
+    .filter-group label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+    .filter-input,.filter-select{padding:8px 11px;border:2px solid var(--border);border-radius:8px;font-size:.88rem;outline:none;background:#fff;transition:border .2s;}
     .filter-input:focus,.filter-select:focus{border-color:var(--primary-light);}
     .filter-actions{display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap;}
-    .btn-filter{padding:9px 15px;border:none;border-radius:8px;cursor:pointer;
-      font-size:.85rem;font-weight:700;transition:all .15s;white-space:nowrap;}
+    .btn-filter{padding:9px 15px;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:700;transition:all .15s;white-space:nowrap;}
     .btn-apply{background:var(--primary);color:#fff;} .btn-apply:hover{background:var(--primary-light);}
     .btn-reset2{background:#f0f2f8;color:var(--primary);border:2px solid var(--border);} .btn-reset2:hover{background:#dde1f0;}
     .btn-export-csv{background:#6a1b9a;color:#fff;} .btn-export-csv:hover{background:#7b1fa2;}
     .btn-export-xls{background:#1b5e20;color:#fff;} .btn-export-xls:hover{background:#2e7d32;}
     .btn-clear-hist{background:#b71c1c;color:#fff;} .btn-clear-hist:hover{background:var(--danger);}
     .hist-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
-    .hist-stat{background:var(--card);border-radius:10px;padding:9px 16px;
-      box-shadow:var(--shadow);font-size:.82rem;display:flex;align-items:center;gap:7px;}
+    .hist-stat{background:var(--card);border-radius:10px;padding:9px 16px;box-shadow:var(--shadow);font-size:.82rem;display:flex;align-items:center;gap:7px;}
     .hist-stat strong{font-size:1.05rem;color:var(--primary);}
     .table-wrap{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
-    .table-header-bar{background:linear-gradient(135deg,#37474f,#546e7a);color:#fff;
-      padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
+    .table-header-bar{background:linear-gradient(135deg,#37474f,#546e7a);color:#fff;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
     .table-header-bar span{font-weight:700;font-size:.9rem;}
     .page-info{font-size:.78rem;background:rgba(255,255,255,.18);padding:4px 10px;border-radius:7px;}
     .hist-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-    .hist-table thead th{background:#f8f9fc;color:var(--primary);padding:10px 12px;
-      text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;
-      border-bottom:2px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+    .hist-table thead th{background:#f8f9fc;color:var(--primary);padding:10px 12px;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
     .hist-table thead th:hover{background:#eef0fa;}
     .hist-table thead th.sorted{color:var(--primary-light);}
     .hist-table tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
@@ -237,10 +256,8 @@
     .badge-resp{background:#e8eaf6;color:#1a237e;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:9px;text-transform:uppercase;}
     .td-activity span{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:9px;font-size:.78rem;font-weight:600;}
     .no-data{text-align:center;padding:32px;color:var(--muted);font-style:italic;}
-    .pagination{display:flex;align-items:center;justify-content:center;gap:5px;
-      padding:12px;background:var(--card);border-top:1px solid var(--border);}
-    .pg-btn{padding:5px 11px;border:1.5px solid var(--border);border-radius:6px;
-      background:#fff;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);transition:all .15s;}
+    .pagination{display:flex;align-items:center;justify-content:center;gap:5px;padding:12px;background:var(--card);border-top:1px solid var(--border);}
+    .pg-btn{padding:5px 11px;border:1.5px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);transition:all .15s;}
     .pg-btn:hover:not(:disabled){background:var(--primary);color:#fff;border-color:var(--primary);}
     .pg-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
     .pg-btn:disabled{opacity:.4;cursor:not-allowed;}
@@ -253,6 +270,11 @@
     .toast.success{background:#1b5e20;color:#fff;}
     .toast.error{background:#b71c1c;color:#fff;}
     .toast.info{background:#1565c0;color:#fff;}
+
+    /* Drag ghost custom */
+    .drag-ghost{position:fixed;pointer-events:none;z-index:9999;background:#fff;
+      border:2px solid #3949ab;border-radius:18px;padding:5px 12px;font-size:.83rem;
+      font-weight:700;color:#1a237e;box-shadow:0 8px 24px rgba(26,35,126,.3);opacity:.9;}
 
     ::-webkit-scrollbar{width:5px;}
     ::-webkit-scrollbar-thumb{background:#bbb;border-radius:4px;}
@@ -292,7 +314,7 @@
       <div class="panel-title">⌨️ Introducere User</div>
       <div class="scan-row">
         <input class="scan-input" id="scanInput" type="text"
-          placeholder="Introdu sau scanează ID-ul userului cu scanner-ul de coduri de bare..."
+          placeholder="Introdu sau scanează ID-ul userului..."
           autofocus onkeydown="if(event.key==='Enter') assignUser()"/>
         <button class="scan-btn" onclick="assignUser()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -321,8 +343,6 @@
 <div class="tab-content" id="tab-transfer">
   <div class="main-wrap">
     <div class="transfer-grid">
-
-      <!-- EXPORT -->
       <div class="transfer-card">
         <div class="transfer-card-header th-export">
           <div class="t-icon">📤</div>
@@ -330,20 +350,18 @@
         </div>
         <div class="transfer-card-body">
           <div class="export-options">
-            <button class="export-btn export-btn-full" onclick="exportJSON('all')">💾 Export COMPLET (JSON — stare + istoric)</button>
-            <button class="export-btn export-btn-hist" onclick="exportJSON('history')">📋 Export doar Istoric (JSON)</button>
+            <button class="export-btn export-btn-full"  onclick="exportJSON('all')">💾 Export COMPLET (JSON — stare + istoric)</button>
+            <button class="export-btn export-btn-hist"  onclick="exportJSON('history')">📋 Export doar Istoric (JSON)</button>
             <button class="export-btn export-btn-state" onclick="exportJSON('state')">👥 Export doar Stare Curentă (JSON)</button>
             <hr class="export-divider"/>
             <button class="export-btn export-btn-excel" onclick="exportExcel('full')">🟢 Export Excel COMPLET (toate foile)</button>
             <button class="export-btn export-btn-excel" onclick="exportExcel('istoric')">🟢 Export Excel — Istoric</button>
             <button class="export-btn export-btn-excel" onclick="exportExcel('stare')">🟢 Export Excel — Stare Curentă</button>
             <hr class="export-divider"/>
-            <button class="export-btn export-btn-csv" onclick="exportCSV()">📊 Export CSV (pentru Excel clasic)</button>
+            <button class="export-btn export-btn-csv"   onclick="exportCSV()">📊 Export CSV (pentru Excel clasic)</button>
           </div>
         </div>
       </div>
-
-      <!-- IMPORT -->
       <div class="transfer-card">
         <div class="transfer-card-header th-import">
           <div class="t-icon">📥</div>
@@ -368,8 +386,6 @@
           <button class="import-btn" id="importBtn" onclick="doImport()" disabled>📥 Importă Datele</button>
         </div>
       </div>
-
-      <!-- RESET -->
       <div class="transfer-card">
         <div class="transfer-card-header th-reset">
           <div class="t-icon">🗑️</div>
@@ -383,8 +399,6 @@
           </div>
         </div>
       </div>
-
-      <!-- INFO -->
       <div class="transfer-card">
         <div class="transfer-card-header th-info">
           <div class="t-icon">ℹ️</div>
@@ -399,7 +413,6 @@
           </ul>
         </div>
       </div>
-
     </div>
     <div class="backup-history">
       <div class="bh-header"><span>💾 Istoric Export-uri</span><small style="opacity:.7">Ultimele exporturi efectuate</small></div>
@@ -421,11 +434,20 @@
         <input class="filter-input" id="f-resp" type="text" placeholder="Nume responsabil"/>
       </div>
       <div class="filter-group">
+        <label>Tură</label>
+        <select class="filter-select" id="f-tura">
+          <option value="">Toate</option>
+          <option value="T1">T1</option>
+          <option value="T2">T2</option>
+          <option value="T3">T3</option>
+        </select>
+      </div>
+      <div class="filter-group">
         <label>Activitate</label>
         <select class="filter-select" id="f-activity">
           <option value="">Toate</option>
           <option>Sorter Optimus</option><option>Radra</option>
-          <option>Cântare Podea + Dastec & Matiro</option>
+          <option>Cântare Podea + Dastec &amp; Matiro</option>
           <option>Consolidare Podea</option><option>Încărcări și Descărcări</option>
           <option>Volume</option><option>Reetichetare</option><option>Atipice</option>
         </select>
@@ -470,6 +492,7 @@
               <th onclick="sortTable('uid')"         id="th-uid">User ID ↕</th>
               <th onclick="sortTable('type')"        id="th-type">Acțiune ↕</th>
               <th onclick="sortTable('activity')"    id="th-activity">Activitate ↕</th>
+              <th onclick="sortTable('tura')"        id="th-tura">Tură ↕</th>
               <th onclick="sortTable('responsabil')" id="th-responsabil">Responsabil ↕</th>
               <th>Detalii</th>
             </tr>
@@ -483,6 +506,8 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<!-- drag ghost -->
+<div class="drag-ghost" id="dragGhost" style="display:none;"></div>
 
 <script>
 const ACTIVITIES=[
@@ -495,17 +520,24 @@ const ACTIVITIES=[
   {name:"Reetichetare",                    emoji:"🏷️",color:"c6",bg:"#e0f2f1",tc:"#004d40"},
   {name:"Atipice",                         emoji:"⚡",color:"c7",bg:"#f3e5f5",tc:"#4a148c"},
 ];
+const TURE = ['T1','T2','T3'];
+const TURA_COLORS = {T1:'#1565c0', T2:'#2e7d32', T3:'#e65100'};
 const PAGE_SIZE=25;
 
 /* ── STATE ── */
 let state        = ACTIVITIES.map(()=>[]);
-let responsabili = ACTIVITIES.map(()=>'');
-let historyData  = [];   /* redenumit din 'history' ca sa nu suprascriem window.history */
+// responsabili[i] = {T1:'...', T2:'...', T3:'...'}
+let responsabili = ACTIVITIES.map(()=>({T1:'',T2:'',T3:''}));
+let activeTura   = ACTIVITIES.map(()=>'T1'); // tura activ afisata per card
+let historyData  = [];
 let backupLog    = loadBackupLog();
 let filtered     = [];
 let sortCol='datetime', sortDir=-1, curPage=1;
 let pendingImport=null, importMode='merge';
 let db=null;
+
+/* ── DRAG STATE ── */
+let dragUid=null, dragFromIdx=null;
 
 /* ══════════════════════════════════════
    FIREBASE
@@ -522,7 +554,6 @@ try{
   });
   db=firebase.database();
 
-  /* Indicator conexiune */
   db.ref('.info/connected').on('value',s=>{
     const on=s.val()===true;
     document.getElementById('fbBadge').style.background=on?'rgba(76,175,80,.25)':'rgba(244,67,54,.25)';
@@ -532,7 +563,6 @@ try{
     document.getElementById('fbTxt').textContent=on?'Firebase: Online':'Firebase: Offline';
   });
 
-  /* Listener STARE */
   db.ref('wms/state').on('value',s=>{
     const d=s.val()||{};
     state=ACTIVITIES.map((_,i)=>{
@@ -544,14 +574,18 @@ try{
     render();
   });
 
-  /* Listener RESPONSABILI */
   db.ref('wms/resp').on('value',s=>{
     const d=s.val()||{};
-    responsabili=ACTIVITIES.map((_,i)=>d['a'+i]||'');
+    responsabili=ACTIVITIES.map((_,i)=>{
+      const r=d['a'+i];
+      // suport vechi format string + nou format obiect {T1,T2,T3}
+      if(r && typeof r==='object') return {T1:r.T1||'',T2:r.T2||'',T3:r.T3||''};
+      if(r && typeof r==='string') return {T1:r,T2:'',T3:''};
+      return {T1:'',T2:'',T3:''};
+    });
     render();
   });
 
-  /* Listener ISTORIC (ultimele 500) */
   db.ref('wms/hist').orderByChild('datetime').limitToLast(500).on('value',s=>{
     const d=s.val()||{};
     historyData=Object.values(d).sort((a,b)=>new Date(b.datetime)-new Date(a.datetime));
@@ -574,37 +608,33 @@ function saveState(){
 function saveResponsabili(){
   if(!db)return;
   const o={};
-  responsabili.forEach((r,i)=>{ o['a'+i]=r||null; });
+  responsabili.forEach((r,i)=>{ o['a'+i]={T1:r.T1||null,T2:r.T2||null,T3:r.T3||null}; });
   db.ref('wms/resp').set(o);
 }
-function addHistoryEntry(uid,type,activity,responsabil,details){
+function addHistoryEntry(uid,type,activity,tura,responsabil,details){
   const now=new Date();
   const entry={
     datetime:now.toISOString(),
     dateDisplay:now.toLocaleDateString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric'}),
     timeDisplay:now.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
-    uid,type,activity,responsabil,details
+    uid,type,activity,tura:tura||'',responsabil,details
   };
   if(db){
     db.ref('wms/hist').push(entry);
   } else {
-    /* fallback local daca Firebase nu e disponibil */
     historyData.unshift({id:Date.now()+Math.random(),...entry});
     if(historyData.length>5000) historyData=historyData.slice(0,5000);
   }
 }
 
-/* ── BACKUP LOG (ramas local, nu e critic) ── */
 function loadBackupLog(){ try{return JSON.parse(localStorage.getItem('wms_backups'))||[];}catch{return [];} }
 function saveBackupLog(){ localStorage.setItem('wms_backups',JSON.stringify(backupLog)); }
 
-/* ── CLOCK ── */
 setInterval(()=>{
   document.getElementById('clock').textContent=
     new Date().toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 },1000);
 
-/* ── TABS ── */
 function switchTab(tab,btn){
   document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
@@ -634,9 +664,10 @@ function assignUser(){
   const now=new Date();
   ns[idx].push({id:uid,time:now.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})});
   state=ns; saveState();
-  const resp=responsabili[idx]||'—';
-  if(prev) addHistoryEntry(uid,'move',ACTIVITIES[idx].name,resp,`Mutat din "${prev}" → "${ACTIVITIES[idx].name}"`);
-  else     addHistoryEntry(uid,'in',ACTIVITIES[idx].name,resp,`Asignat la "${ACTIVITIES[idx].name}"`);
+  const turaActiva=activeTura[idx];
+  const resp=responsabili[idx][turaActiva]||'—';
+  if(prev) addHistoryEntry(uid,'move',ACTIVITIES[idx].name,turaActiva,resp,`Mutat din "${prev}" → "${ACTIVITIES[idx].name}"`);
+  else     addHistoryEntry(uid,'in',ACTIVITIES[idx].name,turaActiva,resp,`Asignat la "${ACTIVITIES[idx].name}"`);
   showMsg(`✅ ${uid} asignat la "${ACTIVITIES[idx].name}"`,'success');
   document.getElementById('scanInput').value='';
   document.getElementById('scanInput').focus();
@@ -644,29 +675,125 @@ function assignUser(){
 
 function removeUser(actIdx,uid){
   state[actIdx]=state[actIdx].filter(u=>u.id!==uid); saveState();
-  const resp=responsabili[actIdx]||'—';
-  addHistoryEntry(uid,'out',ACTIVITIES[actIdx].name,resp,`Eliminat din "${ACTIVITIES[actIdx].name}"`);
+  const t=activeTura[actIdx];
+  const resp=responsabili[actIdx][t]||'—';
+  addHistoryEntry(uid,'out',ACTIVITIES[actIdx].name,t,resp,`Eliminat din "${ACTIVITIES[actIdx].name}"`);
 }
 
-/* ── RESPONSABIL ── */
-function toggleEditResp(idx){
-  const editRow=document.getElementById(`resp-edit-${idx}`);
-  const input  =document.getElementById(`resp-input-${idx}`);
-  const isOpen=editRow.classList.contains('show');
+/* ── DRAG & DROP ── */
+function onDragStart(e, actIdx, uid){
+  dragUid=uid; dragFromIdx=actIdx;
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain', uid);
+  setTimeout(()=>{
+    document.querySelectorAll('.user-chip').forEach(c=>{
+      if(c.dataset.uid===uid && parseInt(c.dataset.actidx)===actIdx) c.classList.add('dragging');
+    });
+  },0);
+  // ghost
+  const ghost=document.getElementById('dragGhost');
+  ghost.textContent='🚚 '+uid;
+  ghost.style.display='block';
+  e.dataTransfer.setDragImage(ghost, 0, 0);
+}
+function onDragEnd(){
+  dragUid=null; dragFromIdx=null;
+  document.querySelectorAll('.user-chip').forEach(c=>c.classList.remove('dragging'));
+  document.querySelectorAll('.drop-zone-body').forEach(z=>z.classList.remove('drag-active'));
+  document.querySelectorAll('.activity-card').forEach(c=>c.classList.remove('drag-over-card'));
+  document.getElementById('dragGhost').style.display='none';
+}
+function onDragOver(e, actIdx){
+  if(dragUid===null) return;
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('.drop-zone-body').forEach(z=>z.classList.remove('drag-active'));
+  document.querySelectorAll('.activity-card').forEach(c=>c.classList.remove('drag-over-card'));
+  const zone=document.getElementById('drop-zone-'+actIdx);
+  const card=document.getElementById('activity-card-'+actIdx);
+  if(zone) zone.classList.add('drag-active');
+  if(card) card.classList.add('drag-over-card');
+}
+function onDragLeave(actIdx){
+  const zone=document.getElementById('drop-zone-'+actIdx);
+  const card=document.getElementById('activity-card-'+actIdx);
+  if(zone) zone.classList.remove('drag-active');
+  if(card) card.classList.remove('drag-over-card');
+}
+function onDrop(e, toIdx){
+  e.preventDefault();
+  const zone=document.getElementById('drop-zone-'+toIdx);
+  const card=document.getElementById('activity-card-'+toIdx);
+  if(zone) zone.classList.remove('drag-active');
+  if(card) card.classList.remove('drag-over-card');
+  if(dragUid===null || dragFromIdx===null) return;
+  if(dragFromIdx===toIdx){ onDragEnd(); return; }
+  const uid=dragUid, fromIdx=dragFromIdx;
+  onDragEnd();
+  // verifica daca exista deja la destinatie
+  if(state[toIdx].find(u=>u.id===uid)){
+    showToast(`⚠️ ${uid} este deja la "${ACTIVITIES[toIdx].name}"!`,'error'); return;
+  }
+  // muta
+  const userObj=state[fromIdx].find(u=>u.id===uid);
+  state[fromIdx]=state[fromIdx].filter(u=>u.id!==uid);
+  const now=new Date();
+  state[toIdx].push({id:uid, time:now.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})});
+  saveState();
+  const tDest=activeTura[toIdx];
+  const resp=responsabili[toIdx][tDest]||'—';
+  addHistoryEntry(uid,'move',ACTIVITIES[toIdx].name,tDest,resp,
+    `Mutat (drag) din "${ACTIVITIES[fromIdx].name}" → "${ACTIVITIES[toIdx].name}"`);
+  showToast(`🔄 ${uid} mutat la "${ACTIVITIES[toIdx].name}"`, 'info');
+}
+
+/* ── TURA TABS ── */
+function switchTura(actIdx, tura){
+  activeTura[actIdx]=tura;
+  // update tabs UI
+  ['T1','T2','T3'].forEach(t=>{
+    const tab=document.getElementById(`tura-tab-${actIdx}-${t}`);
+    if(tab) tab.classList.toggle('active', t===tura);
+  });
+  // update panels
+  ['T1','T2','T3'].forEach(t=>{
+    const panel=document.getElementById(`tura-panel-${actIdx}-${t}`);
+    if(panel) panel.classList.toggle('active', t===tura);
+  });
+}
+
+/* ── RESPONSABIL per TURA ── */
+function toggleEditResp(actIdx, tura){
+  const editRow=document.getElementById(`resp-edit-${actIdx}-${tura}`);
+  const input  =document.getElementById(`resp-input-${actIdx}-${tura}`);
+  // inchide toate
   document.querySelectorAll('.resp-edit-row').forEach(r=>r.classList.remove('show'));
-  if(!isOpen){ input.value=responsabili[idx]||''; editRow.classList.add('show'); input.focus(); }
+  if(!editRow.classList.contains('show')){
+    input.value=responsabili[actIdx][tura]||'';
+    editRow.classList.add('show');
+    input.focus();
+  }
 }
-function saveResp(idx){
-  const val=document.getElementById(`resp-input-${idx}`).value.trim();
-  const old=responsabili[idx]||'';
-  responsabili[idx]=val; saveResponsabili();
-  document.getElementById(`resp-edit-${idx}`).classList.remove('show');
+function saveResp(actIdx, tura){
+  const val=document.getElementById(`resp-input-${actIdx}-${tura}`).value.trim();
+  const old=responsabili[actIdx][tura]||'';
+  responsabili[actIdx][tura]=val;
+  saveResponsabili();
+  document.getElementById(`resp-edit-${actIdx}-${tura}`).classList.remove('show');
+  // update display fara re-render complet
+  const nameEl=document.getElementById(`resp-name-${actIdx}-${tura}`);
+  if(nameEl){
+    nameEl.textContent=val||'Nealocat';
+    nameEl.className='tura-name'+(val?'':' empty');
+  }
   if(val!==old)
-    addHistoryEntry('—','resp',ACTIVITIES[idx].name,val,
-      old?`Responsabil schimbat: "${old}" → "${val||'Nealocat'}"`:`Responsabil setat: "${val}"`);
-  showToast(`✅ Responsabil salvat pentru ${ACTIVITIES[idx].name}`,'success');
+    addHistoryEntry('—','resp',ACTIVITIES[actIdx].name,tura,val,
+      old?`[${tura}] Responsabil schimbat: "${old}" → "${val||'Nealocat'}"`
+         :`[${tura}] Responsabil setat: "${val}"`);
+  showToast(`✅ Responsabil ${tura} salvat pentru ${ACTIVITIES[actIdx].name}`,'success');
 }
-function cancelResp(idx){ document.getElementById(`resp-edit-${idx}`).classList.remove('show'); }
+function cancelResp(actIdx,tura){
+  document.getElementById(`resp-edit-${actIdx}-${tura}`).classList.remove('show');
+}
 
 /* ── RENDER ── */
 function render(){ renderStats(); renderGrid(); }
@@ -679,11 +806,52 @@ function renderStats(){
       <div class="stat-label">${a.emoji} ${a.name}</div></div>`).join('')}
     <div class="stat-card"><div class="stat-num">${historyData.length}</div><div class="stat-label">📋 Istoric</div></div>`;
 }
+
 function renderGrid(){
   document.getElementById('activityGrid').innerHTML=ACTIVITIES.map((act,i)=>{
-    const resp=responsabili[i]||'';
+    const curT = activeTura[i];
+
+    // Tura tabs
+    const turaTabs = TURE.map(t=>`
+      <button class="tura-tab t${t[1]} ${t===curT?'active':''}"
+        id="tura-tab-${i}-${t}"
+        onclick="switchTura(${i},'${t}')">${t}</button>`).join('');
+
+    // Tura panels (responsabil + edit)
+    const turaPanels = TURE.map(t=>{
+      const resp = responsabili[i][t]||'';
+      return `
+      <div id="tura-panel-${i}-${t}" class="${t===curT?'active':''}">
+        <div class="tura-strip t${t[1]}">
+          <span class="tura-label">👤 Resp. ${t}</span>
+          <span class="tura-name ${resp?'':'empty'}" id="resp-name-${i}-${t}">${resp||'Nealocat'}</span>
+          <button class="btn-edit-resp" onclick="toggleEditResp(${i},'${t}')" title="Editează responsabil ${t}">✏️</button>
+        </div>
+        <div class="resp-edit-row" id="resp-edit-${i}-${t}">
+          <input class="resp-input" id="resp-input-${i}-${t}" type="text"
+            placeholder="Responsabil ${t}..."
+            onkeydown="if(event.key==='Enter') saveResp(${i},'${t}'); if(event.key==='Escape') cancelResp(${i},'${t}')"/>
+          <button class="btn-save-resp"   onclick="saveResp(${i},'${t}')">✓</button>
+          <button class="btn-cancel-resp" onclick="cancelResp(${i},'${t}')">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Users
+    const usersHtml = state[i].length===0
+      ? '<div class="empty-state">Trage un user aici sau folosește câmpul de asignare</div>'
+      : state[i].map(u=>`
+          <div class="user-chip" draggable="true" data-uid="${u.id}" data-actidx="${i}"
+            ondragstart="onDragStart(event,${i},'${u.id}')"
+            ondragend="onDragEnd()">
+            <span class="chip-drag-icon">⠿</span>
+            <span>${u.id}</span>
+            <span class="chip-time">${u.time}</span>
+            <button class="remove-btn" onclick="removeUser(${i},'${u.id}')">✕</button>
+          </div>`).join('');
+
     return `
-    <div class="activity-card">
+    <div class="activity-card" id="activity-card-${i}">
       <div class="card-header ${act.color}">
         <div class="card-icon">${act.emoji}</div>
         <div class="card-header-info">
@@ -692,27 +860,27 @@ function renderGrid(){
         </div>
         <div class="badge">${state[i].length}</div>
       </div>
-      <div class="${act.color}" style="padding-bottom:10px;">
-        <div class="responsabil-strip">
-          <span class="resp-label">👤 Resp.</span>
-          <span class="resp-name ${resp?'':'empty'}">${resp||'Nealocat'}</span>
-          <button class="btn-edit-resp" onclick="toggleEditResp(${i})" title="Editează">✏️</button>
-        </div>
-        <div class="resp-edit-row" id="resp-edit-${i}">
-          <input class="resp-input" id="resp-input-${i}" type="text"
-            placeholder="Introdu numele responsabilului..."
-            onkeydown="if(event.key==='Enter') saveResp(${i}); if(event.key==='Escape') cancelResp(${i})"/>
-          <button class="btn-save-resp"   onclick="saveResp(${i})">✓</button>
-          <button class="btn-cancel-resp" onclick="cancelResp(${i})">✕</button>
+
+      <!-- TURE SECTION -->
+      <div class="${act.color}" style="padding:0 0 10px;">
+        <div class="ture-section">
+          <div class="ture-tabs">${turaTabs}</div>
+          <div class="tura-panels">${turaPanels}</div>
         </div>
       </div>
+
+      <!-- USERS DROP ZONE -->
       <div class="card-body">
-        <div class="users-label">Useri asignați</div>
-        ${state[i].length===0?'<div class="empty-state">Niciun user asignat</div>'
-          :state[i].map(u=>`<div class="user-chip">
-            <span>${u.id}</span><span class="chip-time">${u.time}</span>
-            <button class="remove-btn" onclick="removeUser(${i},'${u.id}')">✕</button>
-          </div>`).join('')}
+        <div class="users-label">
+          Useri asignați
+          <span class="drag-hint">✋ trage pentru a muta</span>
+        </div>
+        <div class="drop-zone-body" id="drop-zone-${i}"
+          ondragover="onDragOver(event,${i})"
+          ondragleave="onDragLeave(${i})"
+          ondrop="onDrop(event,${i})">
+          ${usersHtml}
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -722,64 +890,66 @@ function renderGrid(){
    EXPORT EXCEL — SheetJS
 ══════════════════════════════════════ */
 function exportExcel(mode){
-  const wb = XLSX.utils.book_new();
-  const now = new Date();
-  const filename = `Activitati_${now.toISOString().slice(0,10)}_${now.toTimeString().slice(0,5).replace(':','-')}.xlsx`;
+  const wb=XLSX.utils.book_new();
+  const now=new Date();
+  const filename=`Activitati_${now.toISOString().slice(0,10)}_${now.toTimeString().slice(0,5).replace(':','-')}.xlsx`;
 
-  function setColWidths(ws, widths){ ws['!cols'] = widths.map(w=>({wch:w})); }
-  function styleHeader(ws, range, colCount){
-    for(let c=0;c<colCount;c++){
-      const addr = XLSX.utils.encode_cell({r:range,c});
-      if(!ws[addr]) continue;
-      ws[addr].s={font:{bold:true,color:{rgb:'FFFFFF'},sz:11},fill:{fgColor:{rgb:'1A237E'}},
-        alignment:{horizontal:'center',vertical:'center',wrapText:true},
-        border:{bottom:{style:'medium',color:{rgb:'FFFFFF'}}}};
-    }
-  }
+  function setColWidths(ws,widths){ ws['!cols']=widths.map(w=>({wch:w})); }
 
   if(mode==='full'||mode==='stare'){
-    const stareRows=[['Activitate','Responsabil','User ID','Ora Asignare']];
+    const stareRows=[['Activitate','T1 – Responsabil','T2 – Responsabil','T3 – Responsabil','User ID','Ora Asignare']];
     ACTIVITIES.forEach((act,i)=>{
-      const resp=responsabili[i]||'Nealocat';
-      if(state[i].length===0){ stareRows.push([act.name,resp,'—','—']); }
-      else state[i].forEach(u=>{ stareRows.push([act.name,resp,u.id,u.time]); });
+      const r=responsabili[i];
+      if(state[i].length===0){
+        stareRows.push([act.name,r.T1||'Nealocat',r.T2||'Nealocat',r.T3||'Nealocat','—','—']);
+      } else {
+        state[i].forEach(u=>{ stareRows.push([act.name,r.T1||'Nealocat',r.T2||'Nealocat',r.T3||'Nealocat',u.id,u.time]); });
+      }
     });
-    const wsStare = XLSX.utils.aoa_to_sheet(stareRows);
-    setColWidths(wsStare,[30,25,20,15]); styleHeader(wsStare,0,4);
-    XLSX.utils.book_append_sheet(wb, wsStare, 'Stare Curenta');
+    const wsStare=XLSX.utils.aoa_to_sheet(stareRows);
+    setColWidths(wsStare,[30,22,22,22,18,14]);
+    XLSX.utils.book_append_sheet(wb,wsStare,'Stare Curenta');
 
-    const respRows=[['Nr.','Activitate','Responsabil','Useri Activi']];
-    ACTIVITIES.forEach((act,i)=>{ respRows.push([i+1,act.name,responsabili[i]||'Nealocat',state[i].length]); });
-    const wsResp = XLSX.utils.aoa_to_sheet(respRows);
-    setColWidths(wsResp,[5,32,25,15]); styleHeader(wsResp,0,4);
-    XLSX.utils.book_append_sheet(wb, wsResp, 'Responsabili');
+    const respRows=[['Nr.','Activitate','T1 – Responsabil','T2 – Responsabil','T3 – Responsabil','Useri Activi']];
+    ACTIVITIES.forEach((act,i)=>{
+      const r=responsabili[i];
+      respRows.push([i+1,act.name,r.T1||'Nealocat',r.T2||'Nealocat',r.T3||'Nealocat',state[i].length]);
+    });
+    const wsResp=XLSX.utils.aoa_to_sheet(respRows);
+    setColWidths(wsResp,[5,30,22,22,22,14]);
+    XLSX.utils.book_append_sheet(wb,wsResp,'Responsabili Ture');
   }
 
   if(mode==='full'||mode==='istoric'||mode==='filtrat'){
     const data=(mode==='filtrat'&&filtered.length)?filtered:historyData;
     if(data.length===0&&mode!=='full'){ showToast('Nu există date de exportat.','error'); return; }
     const typeLabel={in:'IN',out:'OUT',move:'MUTAT',resp:'RESPONSABIL'};
-    const histRows=[['Data','Ora','User ID','Actiune','Activitate','Responsabil','Detalii']];
-    data.forEach(r=>{ histRows.push([r.dateDisplay,r.timeDisplay,r.uid,typeLabel[r.type]||r.type,r.activity,r.responsabil||'—',r.details]); });
-    const wsHist = XLSX.utils.aoa_to_sheet(histRows);
-    setColWidths(wsHist,[12,10,15,12,32,25,45]); styleHeader(wsHist,0,7);
-    XLSX.utils.book_append_sheet(wb, wsHist, 'Istoric');
+    const histRows=[['Data','Ora','User ID','Actiune','Activitate','Tură','Responsabil','Detalii']];
+    data.forEach(r=>{
+      histRows.push([r.dateDisplay,r.timeDisplay,r.uid,typeLabel[r.type]||r.type,
+        r.activity,r.tura||'',r.responsabil||'—',r.details]);
+    });
+    const wsHist=XLSX.utils.aoa_to_sheet(histRows);
+    setColWidths(wsHist,[12,10,15,12,32,8,25,45]);
+    XLSX.utils.book_append_sheet(wb,wsHist,'Istoric');
   }
 
   if(mode==='full'){
-    const sumRows=[['Activitate','Responsabil','Useri Activi','Total IN','Total OUT','Total Mutari']];
+    const sumRows=[['Activitate','T1','T2','T3','Useri Activi','Total IN','Total OUT','Total Mutari']];
     ACTIVITIES.forEach((act,i)=>{
       const actH=historyData.filter(r=>r.activity===act.name);
-      sumRows.push([act.name,responsabili[i]||'Nealocat',state[i].length,
-        actH.filter(r=>r.type==='in').length,actH.filter(r=>r.type==='out').length,actH.filter(r=>r.type==='move').length]);
+      const r=responsabili[i];
+      sumRows.push([act.name,r.T1||'—',r.T2||'—',r.T3||'—',state[i].length,
+        actH.filter(r=>r.type==='in').length,actH.filter(r=>r.type==='out').length,
+        actH.filter(r=>r.type==='move').length]);
     });
-    const wsSumar = XLSX.utils.aoa_to_sheet(sumRows);
-    setColWidths(wsSumar,[30,25,14,12,12,14]); styleHeader(wsSumar,0,6);
-    XLSX.utils.book_append_sheet(wb, wsSumar, 'Sumar Activitati');
+    const wsSumar=XLSX.utils.aoa_to_sheet(sumRows);
+    setColWidths(wsSumar,[30,22,22,22,12,12,12,14]);
+    XLSX.utils.book_append_sheet(wb,wsSumar,'Sumar Activitati');
   }
 
   if(wb.SheetNames.length===0){ showToast('Nu există date de exportat.','error'); return; }
-  XLSX.writeFile(wb, filename);
+  XLSX.writeFile(wb,filename);
   backupLog.unshift({time:now.toLocaleString('ro-RO'),mode:'excel-'+mode,filename,
     stateCount:state.reduce((s,a)=>s+a.length,0),histCount:historyData.length});
   if(backupLog.length>20) backupLog.pop();
@@ -787,14 +957,13 @@ function exportExcel(mode){
   showToast('✅ Excel salvat: '+filename,'success');
 }
 
-/* ── EXPORT JSON ── */
 function exportJSON(mode){
   const now=new Date();
   const filename=`Backup_${now.toISOString().slice(0,10)}_${now.toTimeString().slice(0,5).replace(':','-')}.json`;
   let payload;
-  if(mode==='all')     payload={version:3,exportedAt:now.toISOString(),includes:{state:true,history:true,responsabili:true},state,responsabili,history:historyData};
-  if(mode==='history') payload={version:3,exportedAt:now.toISOString(),includes:{state:false,history:true,responsabili:false},history:historyData};
-  if(mode==='state')   payload={version:3,exportedAt:now.toISOString(),includes:{state:true,history:false,responsabili:true},state,responsabili};
+  if(mode==='all')     payload={version:4,exportedAt:now.toISOString(),includes:{state:true,history:true,responsabili:true},state,responsabili,history:historyData};
+  if(mode==='history') payload={version:4,exportedAt:now.toISOString(),includes:{state:false,history:true,responsabili:false},history:historyData};
+  if(mode==='state')   payload={version:4,exportedAt:now.toISOString(),includes:{state:true,history:false,responsabili:true},state,responsabili};
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
   a.download=filename; a.click();
@@ -805,14 +974,13 @@ function exportJSON(mode){
   showToast('✅ JSON salvat: '+filename,'success');
 }
 
-/* ── EXPORT CSV ── */
 function exportCSV(){
   const data=filtered.length?filtered:historyData;
   if(!data.length){showToast('Nu există date de exportat.','error');return;}
-  const csv=[['Data','Ora','User ID','Actiune','Activitate','Responsabil','Detalii'],
+  const csv=[['Data','Ora','User ID','Actiune','Activitate','Tura','Responsabil','Detalii'],
     ...data.map(r=>[r.dateDisplay,r.timeDisplay,r.uid,
       r.type==='in'?'IN':r.type==='out'?'OUT':r.type==='move'?'MUTAT':'RESPONSABIL',
-      r.activity,r.responsabil||'—',r.details])
+      r.activity,r.tura||'',r.responsabil||'—',r.details])
   ].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
@@ -820,7 +988,6 @@ function exportCSV(){
   a.click();
 }
 
-/* ── BACKUP LOG ── */
 function renderBackupLog(){
   const el=document.getElementById('backupHistBody');
   if(!backupLog.length){ el.innerHTML='<div class="bh-empty">Nu a fost efectuat niciun export încă.</div>'; return; }
@@ -857,7 +1024,7 @@ function readImportFile(file){
       const lines=[`📅 Exportat la: <strong>${new Date(data.exportedAt).toLocaleString('ro-RO')}</strong>`];
       if(data.includes.history)      lines.push(`📋 Înregistrări: <strong>${data.history?.length||0}</strong>`);
       if(data.includes.state)        lines.push(`👥 Useri activi: <strong>${(data.state||[]).reduce((s,a)=>s+a.length,0)}</strong>`);
-      if(data.includes.responsabili) lines.push(`👤 Responsabili incluși`);
+      if(data.includes.responsabili) lines.push(`👤 Responsabili (ture) incluși`);
       const prev=document.getElementById('importPreview');
       prev.innerHTML=lines.join('<br/>'); prev.classList.add('show');
       document.getElementById('importBtn').disabled=false;
@@ -869,17 +1036,22 @@ function readImportFile(file){
 function doImport(){
   if(!pendingImport){ showToast('Nu există fișier.','error'); return; }
   const data=pendingImport; let msg=[];
+  const normalizeResp=(r)=>{
+    if(!r) return {T1:'',T2:'',T3:''};
+    if(typeof r==='string') return {T1:r,T2:'',T3:''};
+    return {T1:r.T1||'',T2:r.T2||'',T3:r.T3||''};
+  };
   if(importMode==='replace'){
     if(data.includes.state&&data.state){
       state=data.state; while(state.length<ACTIVITIES.length) state.push([]);
       saveState(); msg.push('Stare înlocuită');
     }
     if(data.includes.responsabili&&data.responsabili){
-      responsabili=data.responsabili; while(responsabili.length<ACTIVITIES.length) responsabili.push('');
+      responsabili=data.responsabili.map(normalizeResp);
+      while(responsabili.length<ACTIVITIES.length) responsabili.push({T1:'',T2:'',T3:''});
       saveResponsabili(); msg.push('Responsabili înlocuiți');
     }
     if(data.includes.history&&data.history){
-      /* La replace, scriem istoricul in Firebase bucata cu bucata */
       if(db){
         db.ref('wms/hist').set(null).then(()=>{
           const entries=data.history||[];
@@ -901,7 +1073,11 @@ function doImport(){
       saveState(); msg.push('Stare îmbinată');
     }
     if(data.includes.responsabili&&data.responsabili){
-      data.responsabili.forEach((r,i)=>{ if(i<ACTIVITIES.length&&r&&!responsabili[i]) responsabili[i]=r; });
+      data.responsabili.forEach((r,i)=>{
+        if(i>=ACTIVITIES.length) return;
+        const nr=normalizeResp(r);
+        ['T1','T2','T3'].forEach(t=>{ if(nr[t]&&!responsabili[i][t]) responsabili[i][t]=nr[t]; });
+      });
       saveResponsabili(); msg.push('Responsabili îmbinați');
     }
   }
@@ -912,7 +1088,6 @@ function doImport(){
   showToast('✅ Import reușit! '+msg.join(', '),'success');
 }
 
-/* ── RESET ── */
 function resetState(){
   if(confirm('Resetezi starea curentă? Istoricul și responsabilii rămân intacți.')){
     if(db) db.ref('wms/state').set(null);
@@ -932,6 +1107,7 @@ function resetAll(){
 function applyFilters(){
   const fUser=document.getElementById('f-user').value.trim().toUpperCase();
   const fResp=document.getElementById('f-resp').value.trim().toLowerCase();
+  const fTura=document.getElementById('f-tura').value;
   const fAct =document.getElementById('f-activity').value;
   const fType=document.getElementById('f-type').value;
   const fFrom=document.getElementById('f-date-from').value;
@@ -939,6 +1115,7 @@ function applyFilters(){
   filtered=historyData.filter(r=>{
     if(fUser && !r.uid.includes(fUser))                              return false;
     if(fResp && !(r.responsabil||'').toLowerCase().includes(fResp)) return false;
+    if(fTura && r.tura!==fTura)                                     return false;
     if(fAct  && r.activity!==fAct)                                  return false;
     if(fType && r.type!==fType)                                     return false;
     const d=new Date(r.datetime);
@@ -950,11 +1127,10 @@ function applyFilters(){
 }
 function resetFilters(){
   ['f-user','f-resp','f-date-from','f-date-to'].forEach(id=>document.getElementById(id).value='');
-  ['f-activity','f-type'].forEach(id=>document.getElementById(id).value='');
+  ['f-activity','f-type','f-tura'].forEach(id=>document.getElementById(id).value='');
   applyFilters();
 }
 
-/* ── SORT ── */
 function sortTable(col,keepDir=false){
   if(!keepDir){ if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=-1;} }
   document.querySelectorAll('.hist-table thead th').forEach(th=>th.classList.remove('sorted'));
@@ -967,7 +1143,6 @@ function sortTable(col,keepDir=false){
   renderHistTable();
 }
 
-/* ── RENDER ISTORIC ── */
 function renderHistSummary(){
   const ins  =filtered.filter(r=>r.type==='in').length;
   const outs =filtered.filter(r=>r.type==='out').length;
@@ -988,8 +1163,10 @@ function renderHistTable(){
   const rows=filtered.slice((curPage-1)*PAGE_SIZE,curPage*PAGE_SIZE);
   document.getElementById('pageInfo').textContent=`${filtered.length} înreg. | Pag. ${curPage}/${totalPages}`;
   const tbody=document.getElementById('histBody');
+  const turaColor={T1:'#1565c0',T2:'#2e7d32',T3:'#e65100'};
+  const turaBg={T1:'#e3f2fd',T2:'#e8f5e9',T3:'#fff3e0'};
   if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="6" class="no-data">📭 Nu există înregistrări pentru filtrele selectate.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" class="no-data">📭 Nu există înregistrări pentru filtrele selectate.</td></tr>';
   } else {
     tbody.innerHTML=rows.map(r=>{
       const act=ACTIVITIES.find(a=>a.name===r.activity)||{bg:'#f0f2f8',tc:'#555',emoji:'📌'};
@@ -997,10 +1174,12 @@ function renderHistTable(){
         r.type==='out'?'<span class="badge-out">OUT</span>':
         r.type==='move'?'<span class="badge-move">MUTAT</span>':
         '<span class="badge-resp">👤 RESP.</span>';
+      const turaHtml=r.tura?`<span style="background:${turaBg[r.tura]||'#f0f2f8'};color:${turaColor[r.tura]||'#555'};font-weight:800;font-size:.75rem;padding:3px 9px;border-radius:9px;">${r.tura}</span>`:'—';
       return `<tr>
         <td class="td-date"><div>${r.dateDisplay}</div><div style="color:#aaa;font-size:.68rem;">${r.timeDisplay}</div></td>
         <td class="td-user">${r.uid}</td><td>${badge}</td>
         <td class="td-activity"><span style="background:${act.bg};color:${act.tc}">${act.emoji} ${r.activity}</span></td>
+        <td>${turaHtml}</td>
         <td style="font-weight:600;font-size:.82rem;">${r.responsabil||'—'}</td>
         <td style="color:var(--muted);font-size:.8rem;">${r.details}</td>
       </tr>`;
@@ -1028,13 +1207,12 @@ function confirmClearHistory(){
   }
 }
 
-/* ── MSG & TOAST ── */
+let toastTimer=null;
 function showMsg(text,type){
   const el=document.getElementById('msgBox');
   el.textContent=text;el.className='msg '+type;el.style.display='block';
   setTimeout(()=>el.style.display='none',3000);
 }
-let toastTimer=null;
 function showToast(text,type){
   const el=document.getElementById('toast');
   el.textContent=text;el.className='toast '+type+' show';
@@ -1042,9 +1220,7 @@ function showToast(text,type){
   toastTimer=setTimeout(()=>el.classList.remove('show'),3500);
 }
 
-/* ── INIT ── */
 render(); applyFilters(); renderBackupLog();
 </script>
-
 </body>
 </html>
