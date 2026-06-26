@@ -600,6 +600,58 @@ try{
     if(document.getElementById('tab-istoric').classList.contains('active')) applyFilters();
   });
 
+  /* ── AUTO-RESET ZILNIC (shift 06:00 → 04:59 ziua următoare) ── */
+  // Returnează un string de forma "YYYY-MM-DD" reprezentând "ziua de lucru" curentă.
+  // Dacă ora e între 00:00 și 04:59, ziua de lucru e tot cea de ieri (shiftul n-a terminat).
+  function getShiftDayStr(){
+    const now=new Date();
+    // Dacă e între 00:00:00 și 04:59:59 → scădem o zi calendaristică
+    const shiftNow = (now.getHours() < 5) ? new Date(now.getTime() - 24*60*60*1000) : now;
+    return shiftNow.getFullYear()+'-'+(shiftNow.getMonth()+1).toString().padStart(2,'0')+'-'+shiftNow.getDate().toString().padStart(2,'0');
+  }
+
+  function doAutoReset(savedDate, today){
+    db.ref('wms/state').set(null);
+    db.ref('wms/lastResetDate').set(today);
+    const resetMsg=`Reset automat shift (${savedDate} → ${today})`;
+    backupLog.unshift({time:new Date().toLocaleString('ro-RO'),mode:'auto-reset',filename:'—',msg:resetMsg});
+    if(backupLog.length>20) backupLog.pop();
+    saveBackupLog();
+    showToast('🔄 Shift nou — activitățile au fost resetate automat.','info');
+  }
+
+  db.ref('wms/lastResetDate').once('value', snap=>{
+    const savedDate = snap.val();
+    const today = getShiftDayStr();
+    if(savedDate && savedDate !== today){
+      doAutoReset(savedDate, today);
+    } else if(!savedDate){
+      // Prima rulare — salvăm ziua de lucru curentă
+      db.ref('wms/lastResetDate').set(today);
+    }
+  });
+
+  // Verificare la ora 06:00 (startul unui shift nou)
+  // și la ora 05:00 (intrăm în ziua calendaristică nouă dar shiftul a început ieri la 06:00 —
+  // resetul real se face la 06:00, nu la miezul nopții)
+  function scheduleNextShiftCheck(){
+    const now=new Date();
+    const h=now.getHours(), m=now.getMinutes();
+    // Calculăm câte ms sunt până la ora 06:00:05 a zilei curente sau a celei următoare
+    let nextReset=new Date(now.getFullYear(),now.getMonth(),now.getDate(),6,0,5);
+    if(now>=nextReset) nextReset=new Date(nextReset.getTime()+24*60*60*1000);
+    const msToReset=nextReset.getTime()-now.getTime();
+    setTimeout(()=>{
+      db.ref('wms/lastResetDate').once('value',snap=>{
+        const savedDate=snap.val();
+        const today=getShiftDayStr();
+        if(savedDate!==today) doAutoReset(savedDate, today);
+      });
+      scheduleNextShiftCheck();
+    }, msToReset);
+  }
+  scheduleNextShiftCheck();
+
 }catch(err){
   console.warn('Firebase init error:',err);
   document.getElementById('fbTxt').textContent='Firebase: Eroare';
@@ -1001,13 +1053,18 @@ function renderBackupLog(){
   if(!backupLog.length){ el.innerHTML='<div class="bh-empty">Nu a fost efectuat niciun export încă.</div>'; return; }
   const ml={all:'JSON Complet',history:'JSON Istoric',state:'JSON Stare',
     'excel-full':'Excel Complet','excel-istoric':'Excel Istoric','excel-stare':'Excel Stare','excel-filtrat':'Excel Filtrat'};
-  el.innerHTML=backupLog.map(b=>`
-    <div class="bh-row">
-      <div class="bh-dot" style="background:${b.mode.startsWith('excel')?'#1b5e20':'#1565c0'}"></div>
+  el.innerHTML=backupLog.map(b=>{
+    const dotColor=b.mode==='auto-reset'?'#e65100':b.mode.startsWith('excel')?'#1b5e20':'#1565c0';
+    const msgBody=b.mode==='auto-reset'
+      ? `<strong>🔄 Reset automat</strong> — ${b.msg||''}`
+      : `<strong>${ml[b.mode]||b.mode}</strong> — ${b.histCount} înregistrări, ${b.stateCount} useri activi`;
+    return `<div class="bh-row">
+      <div class="bh-dot" style="background:${dotColor}"></div>
       <div class="bh-time">${b.time}</div>
-      <div class="bh-msg"><strong>${ml[b.mode]||b.mode}</strong> — ${b.histCount} înregistrări, ${b.stateCount} useri activi</div>
-      <span style="font-size:.75rem;color:var(--muted)">${b.filename}</span>
-    </div>`).join('');
+      <div class="bh-msg">${msgBody}</div>
+      <span style="font-size:.75rem;color:var(--muted)">${b.filename||''}</span>
+    </div>`;
+  }).join('');
 }
 
 /* ── IMPORT ── */
